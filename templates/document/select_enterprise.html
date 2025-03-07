@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Sélection d'entreprise - {{ template.nom }}{% endblock %}
+
+{% block header %}Sélection d'entreprise pour {{ template.nom }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Sélectionnez une entreprise</h2>
+  <p>Choisissez l'entreprise dont vous souhaitez utiliser les données pour générer le document "{{ template.nom }}".</p>
+  
+  <form action="{{ url_for('document.preview_document') }}" method="post" class="search-form">
+    <div class="form-group">
+      <input type="hidden" name="document_id" value="{{ document_id }}">
+      <label for="enterprise-search">Rechercher une entreprise:</label>
+      <input type="text" id="enterprise-search" placeholder="Nom ou SIRET..." onkeyup="filterEnterprises()">
+    </div>
+    
+    <div class="enterprise-list" id="enterprise-list">
+      {% for enterprise in enterprises %}
+        <div class="enterprise-item">
+          <input type="radio" name="enterprise_id" id="enterprise-{{ enterprise.id_entreprise }}" value="{{ enterprise.id_entreprise }}">
+          <label for="enterprise-{{ enterprise.id_entreprise }}">
+            <strong>{{ enterprise.nom_entreprise }}</strong>
+            {% if enterprise.siret %}
+              <span class="siret">SIRET: {{ enterprise.siret }}</span>
+            {% endif %}
+          </label>
+        </div>
+      {% endfor %}
+    </div>
+    
+    <button type="submit" class="button">Continuer</button>
+  </form>
+</div>
+
+<a href="{{ url_for('document.index') }}" class="back-button">Retour à la liste des documents</a>
+
+<style>
+  .enterprise-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin: 20px 0;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+  }
+  
+  .enterprise-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .enterprise-item:last-child {
+    border-bottom: none;
+  }
+  
+  .enterprise-item label {
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    margin-left: 10px;
+  }
+  
+  .siret {
+    font-size: 0.8em;
+    color: #666;
+  }
+  
+  .hidden {
+    display: none;
+  }
+</style>
+
+<script>
+  function filterEnterprises() {
+    const search = document.getElementById('enterprise-search').value.toLowerCase();
+    const items = document.querySelectorAll('.enterprise-item');
+    
+    items.forEach(item => {
+      const text = item.textContent.toLowerCase();
+      if (text.includes(search)) {
+        item.style.display = '';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  }
+</script>
+{% endblock %}

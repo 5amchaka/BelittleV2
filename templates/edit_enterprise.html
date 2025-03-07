@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Modifier une entreprise{% endblock %}
+
+{% block header %}Modifier une entreprise{% endblock %}
+
+{% block content %}
+<form method="post">
+  <label>Nom de l'entreprise:</label>
+  <input type="text" name="nom_entreprise" value="{{ enterprise['nom_entreprise'] }}" required>
+  
+  <label>SIRET:</label>
+  <input type="text" name="siret" value="{{ enterprise['siret'] }}">
+  
+  <label>Forme juridique:</label>
+  <input type="text" name="forme_juridique" value="{{ enterprise['forme_juridique'] or '' }}" placeholder="SARL, SAS, SA, EURL, etc.">
+
+  <label>Adresse:</label>
+  <input type="text" name="adresse" value="{{ enterprise['adresse'] }}">
+  
+  <label>Ville (saisissez):</label>
+  <input type="text" name="ville" list="villes" value="{{ ville_nom }}">
+  <datalist id="villes">
+    {% for v in villes %}
+      <option value="{{ v }}">
+    {% endfor %}
+  </datalist>
+  <!-- <label>OU Nouvelle Ville:</label>
+  <input type="text" name="new_ville"><br> -->
+  
+  <label>Code Postal:</label>
+  <input type="text" name="id_cp" value="{{ code_postal }}">
+  
+  <label>CEDEX (optionnel):</label>
+  <input type="text" name="id_cedex" value="{{ enterprise['id_cedex'] }}">
+  
+  <label>Email Principal (laisser vide pour None):</label>
+  <input type="email" name="email_principal" value="{{ enterprise['email_principal'] or '' }}">
+  
+  <label>Email Secondaire (laisser vide pour None):</label>
+  <input type="email" name="email_secondaire" value="{{ enterprise['email_secondaire'] or '' }}">
+  
+  <label>Référent:</label>
+  <input type="text" name="referent" value="{{ enterprise['referent'] }}">
+  
+  <label>Numéro de Téléphone:</label>
+  <input type="text" name="numero_telephone" value="{{ enterprise['numero_telephone'] }}">
+  
+  <label>Numéro Portable:</label>
+  <input type="text" name="numero_portable" value="{{ enterprise['numero_portable'] }}">
+  
+  <label>Type d'Entreprise:</label>
+  <select name="id_type_entreprise">
+    {% for t in types %}
+      <option value="{{ t['id_type_entreprise'] }}"
+        {% if t['id_type_entreprise'] == enterprise['id_type_entreprise'] %}selected{% endif %}>
+        {{ t['nom_type_entreprise'] }}
+      </option>
+    {% endfor %}
+  </select>
+  <!-- <label>OU Nouveau Type d'Entreprise:</label>
+  <input type="text" name="new_type"><br> -->
+  
+  <label>Prestations (saisissez):</label>
+  <input type="text" name="prestations" list="prestations" value="{{ enterprise['prestations'] or '' }}">
+  <datalist id="prestations">
+    {% for p in prestations_list %}
+      <option value="{{ p }}">
+    {% endfor %}
+  </datalist>
+  
+  <label>Corps de métier (choix multiple):</label>
+  <select name="corps_metier" multiple size="5">
+    {% for cm in corps_metiers %}
+      <option value="{{ cm['id_corps_metier'] }}"
+        {% if cm['id_corps_metier']|string in current_cm %}selected{% endif %}>
+        {{ cm['nom_corps_metier'] }}
+      </option>
+    {% endfor %}
+  </select>
+  
+  <br>
+  <input type="submit" value="Mettre à jour">
+</form>
+<br>
+<a href="{{ url_for('main.index') }}" class="back-link">Retour au sommaire</a>
+{% endblock %}

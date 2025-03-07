@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Sommaire - Gestion des entreprises{% endblock %}
+
+{% block content %}
+<div class="card option">
+  <h2>1 - Entrer de nouvelles entreprises</h2>
+  <p>Ajouter une nouvelle entreprise à la base de données.</p>
+  <a href="{{ url_for('entreprise.add_enterprise') }}" class="button">Ajouter une entreprise</a>
+</div>
+
+<div class="card option">
+  <h2>2 - Rechercher entreprise</h2>
+  <p>Filtrer les entreprises par corps de métier et/ou type d'entreprise.</p>
+  
+  <form action="{{ url_for('main.search_results') }}" method="get">
+    <div>
+      <label for="corps_metier">Corps de métier:</label>
+      <select name="corps_metier" id="corps_metier">
+        <option value="">Tous</option>
+        {% for cm in corps_metiers %}
+          <option value="{{ cm['id_corps_metier'] }}">{{ cm['nom_corps_metier'] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    
+    <div style="margin-top: 10px;">
+      <label for="type_entreprise">Type d'entreprise:</label>
+      <select name="type_entreprise" id="type_entreprise">
+        <option value="">Tous</option>
+        {% for te in types_entreprise %}
+          <option value="{{ te['id_type_entreprise'] }}">{{ te['nom_type_entreprise'] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    
+    <div style="margin-top: 15px;">
+      <input type="submit" value="Rechercher">
+    </div>
+    
+    <!-- Ajout de la recherche directe par saisie -->
+    <div style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 15px;">
+      <h3>Recherche directe par texte</h3>
+      <div style="display: flex; gap: 10px;">
+        <input type="text" name="direct_search" placeholder="Nom, adresse, email, téléphone..." style="flex: 1;">
+        <input type="submit" value="Rechercher">
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="card option">
+  <h2>3 - Générateur de documents</h2>
+  <p>Générer automatiquement des documents administratifs à partir des données des entreprises.</p>
+  <a href="{{ url_for('document.index') }}" class="button">Accéder au générateur</a>
+</div>
+{% endblock %}

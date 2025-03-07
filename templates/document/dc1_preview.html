@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Prévisualisation et édition - DC1{% endblock %}
+
+{% block header %}Prévisualisation et édition - Formulaire DC1{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Prévisualisation et édition du formulaire DC1 et DC2</h2>
+  <p>Vérifiez et modifiez les informations avant de générer les documents finaux.</p>
+  
+  <form action="{{ url_for('document.dc1_generate') }}" method="post" id="dc1-edit-form" class="document-form">
+    <!-- Informations du projet -->
+    <input type="hidden" name="moa_id" value="{{ moa_id }}">
+    <input type="hidden" name="moe_id" value="{{ moe_id }}">
+    {% for cotraitant_id in cotraitant_ids %}
+        <input type="hidden" name="cotraitant_ids" value="{{ cotraitant_id }}">
+    {% endfor %}
+    <div class="form-section">
+      <h3>Informations du projet</h3>
+      <div class="form-group">
+        <label for="nom_affaire">Nom de l'affaire:</label>
+        <input type="text" id="nom_affaire" name="nom_affaire" value="{{ projet_data.nom_affaire }}" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="reference_projet">Référence du projet:</label>
+        <input type="text" id="reference_projet" name="reference_projet" value="{{ projet_data.reference_projet }}">
+      </div>
+      
+      <div class="form-group">
+        <label for="objet_consultation">Objet de la consultation:</label>
+        <textarea id="objet_consultation" name="objet_consultation" rows="3">{{ projet_data.objet_consultation }}</textarea>
+      </div>
+    </div>
+    
+    <!-- Maître d'Ouvrage -->
+    <div class="form-section">
+      <h3>Maître d'Ouvrage (MOA)</h3>
+      <div class="form-group">
+        <label for="nom_moa">Nom du MOA:</label>
+        <input type="text" id="nom_moa" name="nom_moa" value="{{ data.nom_moa }}">
+      </div>
+      
+      <div class="form-group">
+        <label for="adresse_moa">Adresse du MOA:</label>
+        <input type="text" id="adresse_moa" name="adresse_moa" value="{{ data.adresse_moa }}">
+      </div>
+    </div>
+    
+    <!-- Maître d'Œuvre / Mandataire -->
+    <div class="form-section">
+      <h3>Maître d'Œuvre / Mandataire</h3>
+      <div class="form-group">
+        <label for="nom_mandataire">Nom du Mandataire:</label>
+        <input type="text" id="nom_mandataire" name="nom_mandataire" value="{{ data.nom_mandataire }}">
+      </div>
+      
+      <div class="form-group">
+        <label for="forme_juridique_mandataire">Forme juridique du Mandataire:</label>
+        <input type="text" id="forme_juridique_mandataire" name="forme_juridique_mandataire" value="{{ data.forme_juridique_mandataire|default('') }}" placeholder="SARL, SAS, SA, EURL, etc.">
+      </div>
+      
+      <div class="form-group">
+        <label for="adresse_mandataire">Adresse du Mandataire:</label>
+        <input type="text" id="adresse_mandataire" name="adresse_mandataire" value="{{ data.adresse_mandataire }}">
+      </div>
+      
+      <div class="form-group">
+        <label for="email_mandataire">Email du Mandataire:</label>
+        <input type="text" id="email_mandataire" name="email_mandataire" value="{{ data.email_mandataire }}">
+      </div>
+      
+      <div class="form-group">
+        <label for="telephone_mandataire">Téléphone du Mandataire:</label>
+        <input type="text" id="telephone_mandataire" name="telephone_mandataire" value="{{ data.telephone_mandataire }}">
+      </div>
+      
+      <div class="form-group">
+        <label for="portable_mandataire">Portable du Mandataire:</label>
+        <input type="text" id="portable_mandataire" name="portable_mandataire" value="{{ data.portable_mandataire }}">
+      </div>
+      
+      <div class="form-group">
+        <label for="siret_mandataire">SIRET du Mandataire:</label>
+        <input type="text" id="siret_mandataire" name="siret_mandataire" value="{{ data.siret_mandataire }}">
+      </div>
+      
+      <div class="form-group">
+        <label for="prestation_mandataire">Prestation du Mandataire:</label>
+        <input type="text" id="prestation_mandataire" name="prestation_mandataire" value="{{ data.prestation_mandataire|default('Mandataire') }}">
+      </div>
+        <h3>Chiffres d'affaires - Mandataire (nécessaire pour DC2)</h3>
+            <p class="help-text">Saisissez les 3 derniers exercices disponibles. Ces informations seront enregistrées pour une utilisation future.</p>
+        
+            <div class="ca-container">
+                {% for i in range(3) %}
+                    <div class="ca-row">
+                        <label for="ca_annee_{{ i }}">Exercice {{ i+1 }}:</label>
+                        <div class="ca-inputs">
+                        <input type="number" id="ca_annee_{{ i }}" name="ca_annee_{{ i }}" 
+                                placeholder="Année" value="{{ ca_data.annees[i] if ca_data and ca_data.annees and i < ca_data.annees|length else '' }}">
+                        <input type="number" id="ca_montant_{{ i }}" name="ca_montant_{{ i }}" 
+                                placeholder="Montant HT en €" step="0.01" value="{{ ca_data.montants[i] if ca_data and ca_data.montants and i < ca_data.montants|length else '' }}">
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+      
+
+    </div>
+    
+    <!-- Co-traitants -->
+    <div class="form-section">
+      <h3>Co-traitants</h3>
+      <input type="hidden" name="cotraitant_count" value="{{ data.cotraitants|length }}">
+      
+      {% if data.cotraitants %}
+  <div class="cotraitants-edit-container">
+    {% for cotraitant in data.cotraitants %}
+      <div class="cotraitant-edit-item">
+        {% if cotraitant.numero == 1 %}
+          <h4>Mandataire</h4>
+        {% else %}
+          <h4>Co-traitant {{ cotraitant.numero }}</h4>
+        {% endif %}
+        
+        <div class="form-group">
+          <label for="cotraitant_nom_{{ loop.index0 }}">Nom:</label>
+          <input type="text" id="cotraitant_nom_{{ loop.index0 }}" name="cotraitant_nom_{{ loop.index0 }}" value="{{ cotraitant.nom }}">
+        </div>
+        
+        <div class="form-group">
+          <label for="cotraitant_adresse_{{ loop.index0 }}">Adresse:</label>
+          <input type="text" id="cotraitant_adresse_{{ loop.index0 }}" name="cotraitant_adresse_{{ loop.index0 }}" value="{{ cotraitant.adresse }}">
+        </div>
+        
+        <div class="form-group">
+          <label for="cotraitant_email_{{ loop.index0 }}">Email:</label>
+          <input type="text" id="cotraitant_email_{{ loop.index0 }}" name="cotraitant_email_{{ loop.index0 }}" value="{{ cotraitant.email }}">
+        </div>
+        
+        <div class="form-group">
+          <label for="cotraitant_telephone_{{ loop.index0 }}">Téléphone:</label>
+          <input type="text" id="cotraitant_telephone_{{ loop.index0 }}" name="cotraitant_telephone_{{ loop.index0 }}" value="{{ cotraitant.telephone }}">
+        </div>
+        
+        <div class="form-group">
+          <label for="cotraitant_portable_{{ loop.index0 }}">Portable:</label>
+          <input type="text" id="cotraitant_portable_{{ loop.index0 }}" name="cotraitant_portable_{{ loop.index0 }}" value="{{ cotraitant.portable }}">
+        </div>
+        
+        <div class="form-group">
+          <label for="cotraitant_siret_{{ loop.index0 }}">SIRET:</label>
+          <input type="text" id="cotraitant_siret_{{ loop.index0 }}" name="cotraitant_siret_{{ loop.index0 }}" value="{{ cotraitant.siret }}">
+        </div>
+
+        <div class="form-group">
+          <label for="cotraitant_prestation_{{ loop.index0 }}">Prestation:</label>
+          <input type="text" id="cotraitant_prestation_{{ loop.index0 }}" name="cotraitant_prestation_{{ loop.index0 }}" value="{{ cotraitant.prestation }}">
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="no-cotraitants">Aucun co-traitant sélectionné.</p>
+{% endif %}
+    </div>
+    
+    <!-- Format de téléchargement -->
+    <div class="form-section">
+      <h3>Format de téléchargement</h3>
+      <div class="format-options">
+        <label>
+          <input type="radio" name="format" value="docx" checked>
+          Document Word (.docx)
+        </label>
+        <label>
+          <input type="radio" name="format" value="excel">
+          Tableur Excel (.xlsx)
+        </label>
+      </div>
+      <p class="help-text">Note: Les documents DC1 et DC2 seront générés en même temps et téléchargés dans un fichier ZIP.</p>
+    </div>
+    
+    <button type="submit" class="button">Générer et télécharger les documents</button>
+  </form>
+</div>
+
+<a href="{{ url_for('document.dc1_form') }}" class="back-button">Retour au formulaire</a>
+
+<style>
+  .document-form {
+    max-width: 100%;
+  }
+  
+  .form-section {
+    background: #f5f5f5;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+  
+  .form-group input, .form-group textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .cotraitants-edit-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  
+  .cotraitant-edit-item {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+  }
+  
+  .cotraitant-edit-item h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .no-cotraitants {
+    background: white;
+    border: 1px solid #eee;
+    padding: 20px;
+    text-align: center;
+    color: #999;
+    font-style: italic;
+  }
+  
+  .format-options {
+    display: flex;
+    gap: 20px;
+  }
+  
+  .format-options label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .format-options label:hover {
+    background-color: #f0f0f0;
+  }
+
+  .help-text {
+    font-style: italic;
+    color: #666;
+    margin-bottom: 15px;
+  }
+  
+  .ca-container {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #eee;
+  }
+  
+  .ca-row {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+  }
+  
+  .ca-inputs {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .ca-inputs input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  @media (min-width: 768px) {
+    .ca-row {
+      flex-direction: row;
+      align-items: center;
+    }
+    
+    .ca-row label {
+      width: 120px;
+    }
+    
+    .ca-inputs {
+      flex: 1;
+    }
+  }
+</style>
+{% endblock %}

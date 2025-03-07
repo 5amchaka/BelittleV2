@@ -1,0 +1,1 @@
+# Ce fichier permet l'importation de modules depuis le package models

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Résultats de recherche{% endblock %}
+
+{% block header %}Résultats de recherche{% endblock %}
+
+{% block content %}
+<!-- Formulaire de filtres modifiable -->
+<div class="card">
+  <h3>Filtres de recherche</h3>
+  <form action="{{ url_for('main.search_results') }}" method="get" class="search-form">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="corps_metier">Corps de métier:</label>
+        <select name="corps_metier" id="corps_metier">
+          <option value="">Tous</option>
+          {% for cm in corps_metiers %}
+            <option value="{{ cm['id_corps_metier'] }}" {% if cm['id_corps_metier']|string == corps_metier_id %}selected{% endif %}>
+              {{ cm['nom_corps_metier'] }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="type_entreprise">Type d'entreprise:</label>
+        <select name="type_entreprise" id="type_entreprise">
+          <option value="">Tous</option>
+          {% for te in types_entreprise %}
+            <option value="{{ te['id_type_entreprise'] }}" {% if te['id_type_entreprise']|string == type_entreprise_id %}selected{% endif %}>
+              {{ te['nom_type_entreprise'] }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <input type="submit" value="Appliquer les filtres" class="submit-btn">
+      </div>
+    </div>
+    
+    <!-- Ajout d'un champ de recherche directe -->
+    <div class="form-row" style="margin-top: 15px;">
+      <div class="form-group" style="flex-grow: 1;">
+        <label for="search-input">Recherche directe:</label>
+        <input type="text" id="search-input" placeholder="Rechercher..." class="search-input" onkeyup="filterTable()">
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="filters">
+  <h3>Filtres actuels:</h3>
+  <p>Corps de métier: {{ corps_metier_name or 'Tous' }}</p>
+  <p>Type d'entreprise: {{ type_entreprise_name or 'Tous' }}</p>
+</div>
+
+<!-- Sélecteur de colonnes avec IDs explicites -->
+<div class="column-selector">
+  <h3>Colonnes affichées:</h3>
+  <label><input type="checkbox" id="column-0" checked> Nom</label>
+  <label><input type="checkbox" id="column-1" checked> Adresse</label>
+  <label><input type="checkbox" id="column-2" checked> Téléphone</label>
+  <label><input type="checkbox" id="column-3" checked> Téléphone portable</label>
+  <label><input type="checkbox" id="column-4" checked> Email principal</label>
+  <label><input type="checkbox" id="column-5" checked> Email secondaire</label>
+  <label><input type="checkbox" id="column-6" checked> Référent</label>
+  <label><input type="checkbox" id="column-7" checked> SIRET</label>
+  
+</div>
+
+{% if enterprises %}
+  <table id="resultsTable">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)" class="sortable">Nom <span class="sort-icon"></span></th>
+        <th>Adresse complète</th>
+        <th>Téléphone</th>
+        <th>Téléphone portable</th>
+        <th>Email principal</th>
+        <th>Email secondaire</th>
+        <th>Référent</th>
+        <th>SIRET</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ent in enterprises %}
+      <tr>
+        <td>{{ ent['nom_entreprise'] }}</td>
+        <td>{{ ent['adresse_complete'] }}</td>
+        <td>{{ ent['numero_telephone'] }}</td>
+        <td>{{ ent['numero_portable'] }}</td>
+        <td>{{ ent['email_principal'] }}</td>
+        <td>{{ ent['email_secondaire'] }}</td>
+        <td>{{ ent['referent'] }}</td>
+        <td>{{ ent['siret'] }}</td>
+        
+        <td class="actions">
+          <a href="{{ url_for('entreprise.edit_enterprise', enterprise_id=ent['id_entreprise']) }}" class="action-btn edit">Modifier</a>
+          <form action="{{ url_for('entreprise.delete_enterprise') }}" method="post" class="delete-form" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette entreprise ?');">
+            <input type="hidden" name="enterprise_id" value="{{ ent['id_entreprise'] }}">
+            <input type="hidden" name="corps_metier" value="{{ corps_metier_id }}">
+            <input type="hidden" name="type_entreprise" value="{{ type_entreprise_id }}">
+            <button type="submit" class="action-btn delete">Supprimer</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <div class="no-results">
+    <p>Aucune entreprise ne correspond aux critères de recherche.</p>
+  </div>
+{% endif %}
+
+<a href="{{ url_for('main.index') }}" class="back-button">Retour au sommaire</a>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+{% endblock %}

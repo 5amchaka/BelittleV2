@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Aperçu - {{ template.nom }}{% endblock %}
+
+{% block header %}Aperçu du document {{ template.nom }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Aperçu des données</h2>
+  <p>Vérifiez les informations qui seront utilisées pour générer le document.</p>
+  
+  <div class="data-preview">
+    <table>
+      <tbody>
+        {% for key, value in data.items() %}
+          <tr>
+            <th>{{ key | replace('_', ' ') | title }}</th>
+            <td>{{ value }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  
+  <form action="{{ url_for('document.generate_document') }}" method="post" class="download-form">
+    <input type="hidden" name="document_id" value="{{ document_id }}">
+    <input type="hidden" name="enterprise_id" value="{{ enterprise_id }}">
+    
+    <div class="format-choice">
+      <h3>Format de téléchargement</h3>
+      <div class="format-options">
+        <label>
+          <input type="radio" name="format" value="docx" checked>
+          Document Word (.docx)
+        </label>
+        <label>
+          <input type="radio" name="format" value="excel">
+          Tableur Excel (.xlsx)
+        </label>
+      </div>
+    </div>
+    
+    <button type="submit" class="button">Générer et télécharger</button>
+  </form>
+</div>
+
+<a href="{{ url_for('document.select_enterprise', document_id=document_id) }}" class="back-button">Retour à la sélection d'entreprise</a>
+
+<style>
+  .data-preview {
+    margin: 20px 0;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  
+  .data-preview table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .data-preview th, .data-preview td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+  }
+  
+  .data-preview th {
+    background-color: #f5f5f5;
+    width: 30%;
+  }
+  
+  .format-choice {
+    margin: 20px 0;
+  }
+  
+  .format-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  
+  .format-options label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .format-options label:hover {
+    background-color: #f5f5f5;
+  }
+</style>
+{% endblock %}

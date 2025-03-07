@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Ajouter une entreprise{% endblock %}
+
+{% block header %}Ajouter une entreprise{% endblock %}
+
+{% block content %}
+<form method="post">
+  <label>Nom de l'entreprise:</label>
+  <input type="text" name="nom_entreprise" required>
+  
+  <label>SIRET:</label>
+  <input type="text" name="siret">
+  
+  <label>Forme juridique:</label>
+  <input type="text" name="forme_juridique" placeholder="SARL, SAS, SA, EURL, etc.">
+
+  <label>Adresse (rue + numéro):</label>
+  <input type="text" name="adresse">
+  
+  <label>Ville (saisissez):</label>
+  <input type="text" name="ville" list="villes">
+  <datalist id="villes">
+    {% for v in villes %}
+      <option value="{{ v }}">
+    {% endfor %}
+  </datalist>
+  
+  <label>Code Postal:</label>
+  <input type="text" name="id_cp">
+  
+  <label>CEDEX (optionnel):</label>
+  <input type="text" name="id_cedex">
+  
+  <label>Email Principal (laisser vide pour None):</label>
+  <input type="email" name="email_principal">
+  
+  <label>Email Secondaire (laisser vide pour None):</label>
+  <input type="email" name="email_secondaire">
+  
+  <label>Référent:</label>
+  <input type="text" name="referent">
+  
+  <label>Numéro de Téléphone:</label>
+  <input type="text" name="numero_telephone">
+  
+  <label>Numéro Portable:</label>
+  <input type="text" name="numero_portable">
+  
+  <label>Type d'Entreprise:</label>
+  <select name="id_type_entreprise">
+    {% for t in types %}
+      <option value="{{ t['id_type_entreprise'] }}">{{ t['nom_type_entreprise'] }}</option>
+    {% endfor %}
+  </select>
+  <label>OU Nouveau Type d'Entreprise:</label>
+  <input type="text" name="new_type">
+  
+  <label>Prestations (saisissez):</label>
+  <input type="text" name="prestations" list="prestations">
+  <datalist id="prestations">
+    {% for p in prestations_list %}
+      <option value="{{ p }}">
+    {% endfor %}
+  </datalist>
+  
+  <label>Corps de métier (choix multiple):</label>
+  <select name="corps_metier" multiple size="5">
+    {% for cm in corps_metiers %}
+      <option value="{{ cm['id_corps_metier'] }}">{{ cm['nom_corps_metier'] }}</option>
+    {% endfor %}
+  </select>
+  
+  <br>
+  <input type="submit" value="Ajouter">
+</form>
+<br>
+<a href="{{ url_for('main.index') }}" class="back-link">Retour au sommaire</a>
+{% endblock %}
