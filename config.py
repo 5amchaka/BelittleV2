@@ -19,7 +19,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'votre_cle_secrete')
 
 # Configuration du serveur
 HOST = os.environ.get('HOST', '0.0.0.0')
-PORT = int(os.environ.get('PORT', 5000))
+PORT = int(os.environ.get('PORT', 5002))
 
 # Chemin des templates de documents
 TEMPLATES_DOCUMENT_DIR = os.path.join(BASE_DIR, 'templates', 'document_templates')
