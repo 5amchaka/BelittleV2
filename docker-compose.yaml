@@ -1,27 +1,46 @@
-#version: '3'
-
 services:
-  projet_belittle:
-    build: . #/Projet_Belittle
+  app:
+    build: .
+    container_name: entreprise_app
     ports:
-      - "5002:5002"
+      - "${APP_PORT:-5002}:5002"
     volumes:
       - ./data:/app/data
+      - ./logs:/app/logs
     environment:
-      - SECRET_KEY=votre_cle_secrete
+      - SECRET_KEY=${SECRET_KEY:-votre_cle_secrete}
       - HOST=0.0.0.0
       - PORT=5002
+      - DB_ENGINE=${DB_ENGINE:-sqlite}  # sqlite ou postgres
+      - DB_NAME=${DB_NAME:-entreprise}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+    depends_on:
+      - postgres
     restart: unless-stopped
+    networks:
+      - app_network
 
-#  projet_bebigger:
-    #build: ./Projet_Bebigger
- #   ports:
-  #    - "5001:5001"
-   # volumes:
-    #  - ./shared-data:/data
-    #environment:
-     # - DATABASE_PATH=/data/db/entreprise.db
-      #- SECRET_KEY=votre_cle_secrete
-      #- HOST=0.0.0.0
-      #- PORT=5001
-    #restart: unless-stopped
+  postgres:
+    image: postgres:14-alpine
+    container_name: entreprise_postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${DB_NAME:-entreprise}
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+    restart: unless-stopped
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
