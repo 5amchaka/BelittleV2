@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Créer un Projet{% endblock %}
+
+{% block header %}Créer un Nouveau Projet{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Informations du Projet</h2>
+  
+  <form action="{{ url_for('document.create_projet_form') }}" method="post" class="projet-form">
+    <div class="form-section">
+      <h3>Identification de l'opération</h3>
+      <div class="form-group">
+        <label for="identification_operation">Description de l'opération *</label>
+        <textarea id="identification_operation" name="identification_operation" rows="4" required
+                  placeholder="Décrivez l'opération en détail (objet, localisation, caractéristiques principales...)"></textarea>
+      </div>
+    </div>
+    
+    <div class="form-section">
+      <h3>Informations générales</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="nom_affaire">Nom de l'affaire</label>
+          <input type="text" id="nom_affaire" name="nom_affaire" 
+                 placeholder="Nom commercial du projet">
+        </div>
+        
+        <div class="form-group">
+          <label for="reference_projet">Référence du projet</label>
+          <input type="text" id="reference_projet" name="reference_projet" 
+                 placeholder="Référence interne ou externe">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="date_notification">Date de notification</label>
+        <input type="date" id="date_notification" name="date_notification">
+      </div>
+    </div>
+    
+    <div class="form-section">
+      <h3>Maître d'Ouvrage (MOA)</h3>
+      <div class="form-group">
+        <label for="id_moa">Sélectionnez le Maître d'Ouvrage *</label>
+        <select id="id_moa" name="id_moa" required>
+          <option value="">-- Sélectionner le MOA --</option>
+          {% for moa in moa_list %}
+            <option value="{{ moa.id_entreprise }}">{{ moa.nom_entreprise }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    
+    <div class="form-actions">
+      <button type="submit" class="button button-primary">Créer le projet</button>
+      <a href="{{ url_for('document.projets_list') }}" class="button button-secondary">Annuler</a>
+    </div>
+  </form>
+</div>
+
+<style>
+  .projet-form {
+    max-width: 800px;
+  }
+  
+  .form-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+  }
+  
+  .form-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #35424a;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 8px;
+  }
+  
+  .form-row {
+    display: flex;
+    gap: 20px;
+  }
+  
+  .form-row .form-group {
+    flex: 1;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+  }
+  
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+  }
+  
+  .form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+  }
+  
+  .button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.3s;
+  }
+  
+  .button-primary {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .button-primary:hover {
+    background-color: #0056b3;
+  }
+  
+  .button-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .button-secondary:hover {
+    background-color: #545b62;
+  }
+  
+  @media (max-width: 768px) {
+    .form-row {
+      flex-direction: column;
+      gap: 0;
+    }
+    
+    .form-actions {
+      flex-direction: column;
+    }
+    
+    .button {
+      width: 100%;
+      text-align: center;
+    }
+  }
+</style>
+{% endblock %}

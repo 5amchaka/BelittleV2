@@ -6,8 +6,24 @@
 
 {% block content %}
 <div class="card">
-  <h2>Sélectionnez un type de document à générer</h2>
-  <p>Choisissez le document administratif que vous souhaitez préparer avec les données de votre base.</p>
+  <h2>Générateur de Documents Administratifs</h2>
+  <p>Choisissez le type de document que vous souhaitez générer.</p>
+  
+  <!-- Section Gestion des Projets -->
+  <div class="section-header">
+    <h3>🏗️ Gestion des Projets</h3>
+    <p>Créez et gérez vos projets avec lots, entreprises et génération de documents multiples</p>
+    <div class="section-actions">
+      <a href="{{ url_for('document.projets_list') }}" class="button button-primary">Gérer les projets</a>
+      <a href="{{ url_for('document.create_projet_form') }}" class="button button-success">Nouveau projet</a>
+    </div>
+  </div>
+  
+  <!-- Section Documents Individuels -->
+  <div class="section-header">
+    <h3>📄 Documents Individuels</h3>
+    <p>Générez des documents pour une entreprise spécifique</p>
+  </div>
   
   <div class="document-list">
     {% for template in templates %}
@@ -29,6 +45,58 @@
 <a href="{{ url_for('main.index') }}" class="back-button">Retour au sommaire</a>
 
 <style>
+  .section-header {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-left: 4px solid #007bff;
+    padding: 20px;
+    margin: 25px 0;
+    border-radius: 8px;
+  }
+  
+  .section-header h3 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    color: #35424a;
+    font-size: 1.3em;
+  }
+  
+  .section-header p {
+    margin-bottom: 15px;
+    color: #6c757d;
+  }
+  
+  .section-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  
+  .button {  
+    display: inline-block;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .button-primary {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .button-success {
+    background-color: #28a745;
+    color: white;
+  }
+  
+  .button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+  
   .document-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -52,6 +120,16 @@
   .document-item h3 {
     margin-top: 0;
     color: #35424a;
+  }
+  
+  @media (max-width: 768px) {
+    .section-actions {
+      flex-direction: column;
+    }
+    
+    .button {
+      text-align: center;
+    }
   }
 </style>
 {% endblock %}

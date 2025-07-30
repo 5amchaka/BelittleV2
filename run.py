@@ -18,7 +18,7 @@ logging.basicConfig(
 )
 
 # Récupérer le mode d'exécution
-ENV = os.environ.get('FLASK_ENV', 'production').lower()
+ENV = os.environ.get('FLASK_ENV', 'development').lower()
 
 if __name__ == '__main__':
     app = create_app()

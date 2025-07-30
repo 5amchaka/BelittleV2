@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Éditer Entreprise - {{ lot_entreprise.nom_entreprise }}{% endblock %}
+
+{% block header %}Éditer Entreprise dans le Lot{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="edit-header">
+    <h2>{{ lot_entreprise.nom_entreprise }}</h2>
+    <p class="edit-details">
+      <strong>Projet :</strong> {{ lot_entreprise.nom_affaire }}<br>
+      <strong>Lot :</strong> {{ lot_entreprise.numero_lot }} - {{ lot_entreprise.objet_marche }}
+    </p>
+  </div>
+  
+  <form method="post" class="edit-form">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="montant_ht">Montant HT (€) :</label>
+        <input type="number" 
+               id="montant_ht" 
+               name="montant_ht" 
+               step="0.01" 
+               min="0"
+               value="{{ lot_entreprise.montant_ht }}" 
+               required>
+      </div>
+      
+      <div class="form-group">
+        <label for="taux_tva">Taux TVA (%) :</label>
+        <input type="number" 
+               id="taux_tva" 
+               name="taux_tva" 
+               step="0.1" 
+               min="0" 
+               max="100"
+               value="{{ lot_entreprise.taux_tva }}" 
+               required>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label class="checkbox-label">
+        <input type="checkbox" 
+               id="est_mandataire" 
+               name="est_mandataire"
+               {% if lot_entreprise.est_mandataire %}checked{% endif %}>
+        <span class="checkbox-text">Cette entreprise est le mandataire du groupement</span>
+      </label>
+    </div>
+    
+    <div class="preview-amounts">
+      <h4>Aperçu des montants :</h4>
+      <div class="amount-preview">
+        <div class="amount-line">
+          <span>Montant HT :</span>
+          <span id="preview_ht">{{ "%.2f"|format(lot_entreprise.montant_ht) }} €</span>
+        </div>
+        <div class="amount-line">
+          <span>TVA :</span>
+          <span id="preview_tva">{{ "%.2f"|format(lot_entreprise.montant_ht * lot_entreprise.taux_tva / 100) }} €</span>
+        </div>
+        <div class="amount-line total">
+          <span>Montant TTC :</span>
+          <span id="preview_ttc">{{ "%.2f"|format(lot_entreprise.montant_ht * (1 + lot_entreprise.taux_tva/100)) }} €</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="form-actions">
+      <button type="submit" class="button button-primary">Enregistrer les modifications</button>
+      <a href="{{ url_for('document.manage_lots', id_projet=id_projet) }}" 
+         class="button button-secondary">Annuler</a>
+    </div>
+  </form>
+</div>
+
+<style>
+  .edit-header {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+  }
+  
+  .edit-header h2 {
+    margin: 0 0 10px 0;
+  }
+  
+  .edit-details {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.9em;
+  }
+  
+  .edit-form {
+    max-width: 600px;
+  }
+  
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #35424a;
+  }
+  
+  .form-group input[type="number"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 1em;
+    transition: border-color 0.3s;
+  }
+  
+  .form-group input[type="number"]:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+  }
+  
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 15px;
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.3s;
+  }
+  
+  .checkbox-label:hover {
+    background: #e9ecef;
+    border-color: #007bff;
+  }
+  
+  .checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+  }
+  
+  .checkbox-text {
+    font-weight: bold;
+    color: #35424a;
+  }
+  
+  .preview-amounts {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 25px 0;
+  }
+  
+  .preview-amounts h4 {
+    margin: 0 0 15px 0;
+    color: #35424a;
+  }
+  
+  .amount-preview {
+    font-family: 'Courier New', monospace;
+  }
+  
+  .amount-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  .amount-line.total {
+    font-weight: bold;
+    border-bottom: 2px solid #35424a;
+    border-top: 1px solid #35424a;
+    margin-top: 10px;
+    padding-top: 10px;
+    font-size: 1.1em;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px solid #eee;
+  }
+  
+  .button {
+    display: inline-block;
+    padding: 12px 24px;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 1em;
+  }
+  
+  .button-primary {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .button-primary:hover {
+    background-color: #0056b3;
+    transform: translateY(-1px);
+  }
+  
+  .button-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .button-secondary:hover {
+    background-color: #545b62;
+    transform: translateY(-1px);
+  }
+  
+  @media (max-width: 768px) {
+    .form-row {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+    
+    .form-actions {
+      flex-direction: column;
+    }
+  }
+</style>
+
+<script>
+  // Mise à jour en temps réel de l'aperçu des montants
+  function updatePreview() {
+    const montantHT = parseFloat(document.getElementById('montant_ht').value) || 0;
+    const tauxTVA = parseFloat(document.getElementById('taux_tva').value) || 0;
+    
+    const montantTVA = montantHT * tauxTVA / 100;
+    const montantTTC = montantHT + montantTVA;
+    
+    document.getElementById('preview_ht').textContent = montantHT.toFixed(2) + ' €';
+    document.getElementById('preview_tva').textContent = montantTVA.toFixed(2) + ' €';
+    document.getElementById('preview_ttc').textContent = montantTTC.toFixed(2) + ' €';
+  }
+  
+  // Écouter les changements sur les champs
+  document.getElementById('montant_ht').addEventListener('input', updatePreview);
+  document.getElementById('taux_tva').addEventListener('input', updatePreview);
+  
+  // Mise à jour initiale
+  updatePreview();
+</script>
+{% endblock %}

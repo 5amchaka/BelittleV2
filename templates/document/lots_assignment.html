@@ -1,0 +1,566 @@
+{% extends "base.html" %}
+
+{% block title %}Attribution des Lots - {{ projet.nom_affaire }}{% endblock %}
+
+{% block header %}Attribution des Entreprises aux Lots{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="project-header">
+    <h2>{{ projet.nom_affaire or 'Projet ' + projet.id_projet|string }}</h2>
+    <p class="project-ref">{{ projet.reference_projet }}</p>
+  </div>
+  
+  <div class="assignment-container">
+    <!-- Zone des entreprises disponibles -->
+    <div class="enterprises-panel">
+      <h3>Entreprises disponibles</h3>
+      
+      <div class="search-box">
+        <input type="text" id="search-enterprises" placeholder="Rechercher une entreprise..." 
+               onkeyup="filterEnterprises()">
+      </div>
+      
+      <div class="enterprises-list" id="enterprises-list">
+        {% for enterprise in enterprises %}
+          <div class="draggable-enterprise" draggable="true" 
+               data-id="{{ enterprise.id_entreprise }}" 
+               data-name="{{ enterprise.nom_entreprise }}"
+               data-siret="{{ enterprise.siret or '' }}">
+            <div class="enterprise-info">
+              <strong>{{ enterprise.nom_entreprise }}</strong>
+              {% if enterprise.siret %}
+                <small>SIRET: {{ enterprise.siret }}</small>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    
+    <!-- Zone des lots -->
+    <div class="lots-panel">
+      <h3>Lots du projet</h3>
+      
+      <div class="lots-container">
+        {% for lot in lots %}
+          <div class="lot-zone" id="lot-{{ lot.id_lot }}" data-lot-id="{{ lot.id_lot }}">
+            <div class="lot-header">
+              <h4>{{ lot.numero_lot }}</h4>
+              <p class="lot-object">{{ lot.objet_marche }}</p>
+            </div>
+            
+            <div class="lot-dropzone" data-lot-id="{{ lot.id_lot }}">
+              {% if lot.entreprises %}
+                {% for entreprise in lot.entreprises %}
+                  <div class="assigned-enterprise" data-enterprise-id="{{ entreprise.id_entreprise }}">
+                    <div class="enterprise-details">
+                      <strong>{{ entreprise.nom_entreprise }}</strong>
+                      {% if entreprise.est_mandataire %}
+                        <span class="mandataire-badge">Mandataire</span>
+                      {% endif %}
+                      <div class="enterprise-amounts">
+                        <small>Montant: {{ "%.2f"|format(entreprise.montant_ht) }} € HT</small>
+                      </div>
+                    </div>
+                    <button class="remove-enterprise" onclick="removeEnterprise({{ entreprise.id_entreprise }}, {{ lot.id_lot }})">×</button>
+                  </div>
+                {% endfor %}
+              {% else %}
+                <div class="empty-lot">
+                  <p>Glissez les entreprises ici</p>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal pour saisir les détails de l'attribution -->
+  <div id="attribution-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Détails de l'attribution</h3>
+      
+      <form id="attribution-form" method="post">
+        <input type="hidden" id="modal-lot-id" name="id_lot">
+        <input type="hidden" id="modal-enterprise-id" name="id_entreprise">
+        
+        <div class="form-group">
+          <label>Entreprise :</label>
+          <span id="modal-enterprise-name"></span>
+        </div>
+        
+        <div class="form-group">
+          <label>Lot :</label>
+          <span id="modal-lot-name"></span>
+        </div>
+        
+        <div class="form-group">
+          <label for="modal-mandataire">
+            <input type="checkbox" id="modal-mandataire" name="est_mandataire">
+            Désigner comme mandataire du lot
+          </label>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="modal-montant-ht">Montant HT (€) :</label>
+            <input type="number" id="modal-montant-ht" name="montant_ht" step="0.01" min="0" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="modal-taux-tva">Taux TVA (%) :</label>
+            <input type="number" id="modal-taux-tva" name="taux_tva" step="0.01" min="0" max="100" value="20.0" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Montant TTC :</label>
+          <span id="modal-montant-ttc">0.00 €</span>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="submit" class="button button-primary">Attribuer</button>
+          <button type="button" class="button button-secondary" onclick="closeModal()">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="navigation-actions">
+  <a href="{{ url_for('document.manage_lots', id_projet=projet.id_projet) }}" class="back-button">Retour aux lots</a>
+  <a href="{{ url_for('document.generate_projet_documents', id_projet=projet.id_projet) }}" 
+     class="button button-success">Générer documents</a>
+</div>
+
+<style>
+  .project-header {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+  }
+  
+  .assignment-container {
+    display: flex;
+    gap: 30px;
+    min-height: 600px;
+  }
+  
+  .enterprises-panel {
+    flex: 1;
+    max-width: 350px;
+  }
+  
+  .lots-panel {
+    flex: 2;
+  }
+  
+  .enterprises-panel h3,
+  .lots-panel h3 {
+    color: #35424a;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #007bff;
+  }
+  
+  .search-box {
+    margin-bottom: 15px;
+  }
+  
+  .search-box input {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  
+  .enterprises-list {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    background: #f8f9fa;
+  }
+  
+  .draggable-enterprise {
+    padding: 12px;
+    margin: 5px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: move;
+    transition: all 0.3s;
+  }
+  
+  .draggable-enterprise:hover {
+    background: #e3f2fd;
+    border-color: #007bff;
+  }
+  
+  .draggable-enterprise.dragging {
+    opacity: 0.5;
+  }
+  
+  .enterprise-info strong {
+    display: block;
+    color: #35424a;
+  }
+  
+  .enterprise-info small {
+    color: #6c757d;
+    font-size: 0.8em;
+  }
+  
+  .lots-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  
+  .lot-zone {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .lot-header {
+    background: #f8f9fa;
+    padding: 15px;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .lot-header h4 {
+    margin: 0 0 5px 0;
+    color: #35424a;
+  }
+  
+  .lot-object {
+    margin: 0;
+    font-size: 0.9em;
+    color: #6c757d;
+  }
+  
+  .lot-dropzone {
+    min-height: 200px;
+    padding: 15px;
+  }
+  
+  .lot-dropzone.dragover {
+    background: #e3f2fd;
+    border: 2px dashed #007bff;
+  }
+  
+  .empty-lot {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    font-style: italic;
+    border: 2px dashed #ddd;
+    border-radius: 6px;
+  }
+  
+  .assigned-enterprise {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 10px;
+    background: #e8f5e8;
+    border: 1px solid #28a745;
+    border-radius: 6px;
+  }
+  
+  .enterprise-details strong {
+    display: block;
+    color: #35424a;
+  }
+  
+  .enterprise-amounts {
+    margin-top: 5px;
+  }
+  
+  .enterprise-amounts small {
+    color: #6c757d;
+  }
+  
+  .mandataire-badge {
+    background: #007bff;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 0.7em;
+    font-weight: bold;
+    margin-left: 10px;
+  }
+  
+  .remove-enterprise {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+  }
+  
+  .remove-enterprise:hover {
+    background: #c82333;
+  }
+  
+  /* Modal styles */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+  
+  .modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 600px;
+  }
+  
+  .close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  
+  .close:hover {
+    color: #000;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-row {
+    display: flex;
+    gap: 15px;
+  }
+  
+  .form-row .form-group {
+    flex: 1;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+  
+  .form-group input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+  
+  .navigation-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+  }
+  
+  .button {
+    display: inline-block;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .button-primary {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .button-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .button-success {
+    background-color: #28a745;
+    color: white;
+  }
+  
+  @media (max-width: 1024px) {
+    .assignment-container {
+      flex-direction: column;
+    }
+    
+    .enterprises-panel {
+      max-width: none;
+    }
+    
+    .enterprises-list {
+      max-height: 250px;
+    }
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const draggableEnterprises = document.querySelectorAll('.draggable-enterprise');
+    const dropzones = document.querySelectorAll('.lot-dropzone');
+    const modal = document.getElementById('attribution-modal');
+    const closeBtn = document.querySelector('.close');
+    
+    let currentDrop = null;
+    
+    // Configuration du drag & drop
+    draggableEnterprises.forEach(enterprise => {
+        enterprise.addEventListener('dragstart', function(e) {
+            e.dataTransfer.setData('text/plain', this.dataset.id);
+            this.classList.add('dragging');
+        });
+        
+        enterprise.addEventListener('dragend', function() {
+            this.classList.remove('dragging');
+        });
+    });
+    
+    dropzones.forEach(zone => {
+        zone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('dragover');
+        });
+        
+        zone.addEventListener('dragleave', function(e) {
+            this.classList.remove('dragover');
+        });
+        
+        zone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+            
+            const enterpriseId = e.dataTransfer.getData('text/plain');
+            const lotId = this.dataset.lotId;
+            const enterprise = document.querySelector(`[data-id="${enterpriseId}"]`);
+            
+            if (enterprise && lotId) {
+                // Ouvrir le modal pour saisir les détails
+                openAttributionModal(enterpriseId, lotId, enterprise.dataset.name);
+            }
+        });
+    });
+    
+    // Gestion du modal
+    function openAttributionModal(enterpriseId, lotId, enterpriseName) {
+        const lotZone = document.getElementById(`lot-${lotId}`);
+        const lotHeader = lotZone.querySelector('.lot-header h4').textContent;
+        const lotObject = lotZone.querySelector('.lot-object').textContent;
+        
+        document.getElementById('modal-enterprise-id').value = enterpriseId;
+        document.getElementById('modal-lot-id').value = lotId;
+        document.getElementById('modal-enterprise-name').textContent = enterpriseName;
+        document.getElementById('modal-lot-name').textContent = `${lotHeader} - ${lotObject}`;
+        
+        // Configurer l'action du formulaire
+        const form = document.getElementById('attribution-form');
+        form.action = `{{ url_for('document.add_entreprise_to_lot_route', id_projet=projet.id_projet, id_lot=0) }}`.replace('0', lotId);
+        
+        modal.style.display = 'block';
+    }
+    
+    closeBtn.onclick = function() {
+        modal.style.display = 'none';
+    }
+    
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    // Calcul automatique du montant TTC
+    const montantHT = document.getElementById('modal-montant-ht');
+    const tauxTVA = document.getElementById('modal-taux-tva');
+    const montantTTC = document.getElementById('modal-montant-ttc');
+    
+    function calculateTTC() {
+        const ht = parseFloat(montantHT.value) || 0;
+        const tva = parseFloat(tauxTVA.value) || 0;
+        const ttc = ht * (1 + tva / 100);
+        montantTTC.textContent = ttc.toFixed(2) + ' €';
+    }
+    
+    montantHT.addEventListener('input', calculateTTC);
+    tauxTVA.addEventListener('input', calculateTTC);
+    
+    window.closeModal = function() {
+        modal.style.display = 'none';
+    }
+});
+
+function filterEnterprises() {
+    const searchText = document.getElementById('search-enterprises').value.toLowerCase();
+    const enterprises = document.querySelectorAll('.draggable-enterprise');
+    
+    enterprises.forEach(enterprise => {
+        const name = enterprise.dataset.name.toLowerCase();
+        const siret = enterprise.dataset.siret.toLowerCase();
+        
+        if (name.includes(searchText) || siret.includes(searchText)) {
+            enterprise.style.display = '';
+        } else {
+            enterprise.style.display = 'none';
+        }
+    });
+}
+
+function removeEnterprise(enterpriseId, lotId) {
+    if (confirm('Êtes-vous sûr de vouloir retirer cette entreprise du lot ?')) {
+        // Créer un formulaire pour supprimer l'attribution
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{{ url_for('document.add_entreprise_to_lot_route', id_projet=projet.id_projet, id_lot=0) }}`.replace('0', lotId);
+        
+        const inputEnterprise = document.createElement('input');
+        inputEnterprise.type = 'hidden';
+        inputEnterprise.name = 'remove_enterprise';
+        inputEnterprise.value = enterpriseId;
+        
+        form.appendChild(inputEnterprise);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

@@ -119,6 +119,103 @@ def init_database():
         )
         ''')
         
+        # Table des projets
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS projets (
+            id_projet INTEGER PRIMARY KEY AUTOINCREMENT,
+            identification_operation TEXT NOT NULL,
+            id_moa INTEGER NOT NULL,
+            id_moe INTEGER,
+            id_moe_mandataire INTEGER,
+            date_notification DATE,
+            date_creation TEXT DEFAULT CURRENT_TIMESTAMP,
+            nom_affaire TEXT,
+            reference_projet TEXT,
+            statut TEXT DEFAULT 'actif',
+            FOREIGN KEY (id_moa) REFERENCES entreprise(id_entreprise),
+            FOREIGN KEY (id_moe) REFERENCES entreprise(id_entreprise),
+            FOREIGN KEY (id_moe_mandataire) REFERENCES entreprise(id_entreprise)
+        )
+        ''')
+        
+        # Table des lots
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS lots (
+            id_lot INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_projet INTEGER NOT NULL,
+            numero_lot TEXT NOT NULL,
+            objet_marche TEXT NOT NULL,
+            montant_initial_ht REAL NOT NULL DEFAULT 0,
+            taux_tva REAL NOT NULL DEFAULT 20.0,
+            date_creation TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (id_projet) REFERENCES projets(id_projet) ON DELETE CASCADE,
+            UNIQUE(id_projet, numero_lot)
+        )
+        ''')
+        
+        # Table de liaison lot-entreprises (pour gérer la co-traitance)
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS lot_entreprises (
+            id_lot_entreprise INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_lot INTEGER NOT NULL,
+            id_entreprise INTEGER NOT NULL,
+            est_mandataire BOOLEAN DEFAULT FALSE,
+            montant_ht REAL NOT NULL DEFAULT 0,
+            taux_tva REAL NOT NULL DEFAULT 20.0,
+            date_attribution TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (id_lot) REFERENCES lots(id_lot) ON DELETE CASCADE,
+            FOREIGN KEY (id_entreprise) REFERENCES entreprise(id_entreprise),
+            UNIQUE(id_lot, id_entreprise)
+        )
+        ''')
+        
+        # Table des avenants
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS avenants (
+            id_avenant INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_lot_entreprise INTEGER NOT NULL,
+            numero_avenant INTEGER NOT NULL,
+            objet_avenant TEXT NOT NULL,
+            montant_precedent_ht REAL NOT NULL,
+            montant_nouveau_ht REAL NOT NULL,
+            taux_tva REAL NOT NULL DEFAULT 20.0,
+            motif TEXT,
+            date_avenant DATE NOT NULL,
+            date_creation TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (id_lot_entreprise) REFERENCES lot_entreprises(id_lot_entreprise) ON DELETE CASCADE
+        )
+        ''')
+        
+        # Table des MOE co-traitants au niveau projet
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS projet_moe_cotraitants (
+            id_projet_moe INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_projet INTEGER NOT NULL,
+            id_entreprise INTEGER NOT NULL,
+            est_mandataire BOOLEAN DEFAULT FALSE,
+            date_attribution TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (id_projet) REFERENCES projets(id_projet) ON DELETE CASCADE,
+            FOREIGN KEY (id_entreprise) REFERENCES entreprise(id_entreprise),
+            UNIQUE(id_projet, id_entreprise)
+        )
+        ''')
+        
+        # Table de suivi des documents générés
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS projet_documents (
+            id_document INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_projet INTEGER NOT NULL,
+            type_document TEXT NOT NULL,
+            nom_fichier TEXT,
+            id_entreprise INTEGER,
+            id_lot INTEGER,
+            date_generation TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (id_projet) REFERENCES projets(id_projet) ON DELETE CASCADE,
+            FOREIGN KEY (id_entreprise) REFERENCES entreprise(id_entreprise),
+            FOREIGN KEY (id_lot) REFERENCES lots(id_lot)
+        )
+        ''')
+        
         # Insertion de données de base (si non existantes)
         # Type d'entreprise par défaut
         cursor.execute('''

@@ -1,0 +1,27 @@
+#version: '3'
+services:
+  projet_belittle:
+    build: .
+    ports:
+      - "5002:5002"
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    environment:
+      - SECRET_KEY=votre_cle_secrete
+      - HOST=0.0.0.0
+      - PORT=5002
+    restart: unless-stopped
+
+#  projet_bebigger:
+    #build: ./Projet_Bebigger
+ #   ports:
+  #    - "5001:5001"
+   # volumes:
+    #  - ./shared-data:/data
+    #environment:
+     # - DATABASE_PATH=/data/db/entreprise.db
+      #- SECRET_KEY=votre_cle_secrete
+      #- HOST=0.0.0.0
+      #- PORT=5001
+    #restart: unless-stopped

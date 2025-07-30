@@ -22,7 +22,8 @@ def add_enterprise():
         adresse          = request.form.get('adresse') or "Non spécifié"
         ville_input      = request.form.get('ville').strip() or "Non spécifié"
         id_ville         = get_or_create_ville(ville_input) if ville_input else None
-        id_cp            = request.form.get('id_cp') or "00000"
+        code_postal      = request.form.get('id_cp').strip() or None
+        id_cp            = get_or_create_cp(code_postal) if code_postal else None
         id_cedex = request.form.get('id_cedex') or None
         # Par ce code qui vérifie explicitement pour "None" et valeurs vides
         id_cedex_raw = request.form.get('id_cedex', '')
@@ -43,7 +44,7 @@ def add_enterprise():
             id_type_entreprise = request.form.get('id_type_entreprise') or "1"
             
         prestations      = request.form.get('prestations').strip() or None
-        selected_cm      = request.form.getlist('corps_metier') or ["1"]
+        selected_cm      = request.form.getlist('corps_metier') or []
         
         # Vérifier si l'email existe déjà
         if email_principal:
@@ -119,7 +120,7 @@ def edit_enterprise(enterprise_id):
         id_type_entreprise = request.form.get('id_type_entreprise') or "1"
             
         prestations      = request.form.get('prestations').strip() or None
-        selected_cm      = request.form.getlist('corps_metier') or ["1"]
+        selected_cm      = request.form.getlist('corps_metier') or []
         
         # Préparer les données pour la mise à jour
         enterprise_data = {

@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des Lots - {{ projet.nom_affaire }}{% endblock %}
+
+{% block header %}Gestion des Lots{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="project-header">
+    <h2>{{ projet.nom_affaire or 'Projet ' + projet.id_projet|string }}</h2>
+    <p class="project-ref">{{ projet.reference_projet }}</p>
+  </div>
+  
+  <div class="lots-section">
+    <h3>Lots du projet</h3>
+    
+    {% if not lots %}
+      <div class="no-lots">
+        <p>Aucun lot créé pour ce projet.</p>
+        
+        <form action="{{ url_for('document.manage_lots', id_projet=projet.id_projet) }}" method="post" class="create-lots-form">
+          <input type="hidden" name="action" value="create_lots">
+          
+          <div class="form-group">
+            <label for="nombre_lots">Nombre de lots à créer :</label>
+            <input type="number" id="nombre_lots" name="nombre_lots" min="1" max="20" value="1" required>
+          </div>
+          
+          <button type="submit" class="button">Créer les lots</button>
+        </form>
+      </div>
+    {% else %}
+      <div class="lots-grid">
+        {% for lot in lots %}
+          <div class="lot-card">
+            <div class="lot-header">
+              <h4>{{ lot.numero_lot }}</h4>
+              <span class="lot-id">#{{ lot.id_lot }}</span>
+            </div>
+            
+            <div class="lot-content">
+              <p class="lot-object">{{ lot.objet_marche }}</p>
+              
+              {% if lot.entreprises %}
+                <div class="lot-enterprises">
+                  <h5>Entreprises attribuées :</h5>
+                  {% for entreprise in lot.entreprises %}
+                    <div class="entreprise-item">
+                      <div class="entreprise-info">
+                        <strong>{{ entreprise.nom_entreprise }}</strong>
+                        {% if entreprise.est_mandataire %}
+                          <span class="mandataire-badge">Mandataire</span>
+                        {% endif %}
+                      </div>
+                      <div class="entreprise-amounts">
+                        <div class="amount-item">
+                          <span class="label">Montant HT :</span>
+                          <span class="value">{{ "%.2f"|format(entreprise.montant_ht) }} €</span>
+                        </div>
+                        <div class="amount-item">
+                          <span class="label">TVA :</span>
+                          <span class="value">{{ entreprise.taux_tva }}%</span>
+                        </div>
+                        <div class="amount-item">
+                          <span class="label">Montant TTC :</span>
+                          <span class="value">{{ "%.2f"|format(entreprise.montant_ht * (1 + entreprise.taux_tva/100)) }} €</span>
+                        </div>
+                      </div>
+                      
+                      <div class="entreprise-actions">
+                        <a href="{{ url_for('document.edit_lot_entreprise', id_lot_entreprise=entreprise.id_lot_entreprise) }}" 
+                           class="btn btn-edit" title="Éditer">
+                          📝
+                        </a>
+                        <form method="post" 
+                              action="{{ url_for('document.delete_lot_entreprise', id_lot_entreprise=entreprise.id_lot_entreprise) }}" 
+                              style="display: inline-block;"
+                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer {{ entreprise.nom_entreprise }} de ce lot ?')">
+                          <button type="submit" class="btn btn-delete" title="Supprimer">🗑️</button>
+                        </form>
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="no-enterprises">
+                  <p class="text-muted">Aucune entreprise attribuée</p>
+                  <div class="lot-amounts">
+                    <div class="amount-item">
+                      <span class="label">Montant initial HT :</span>
+                      <span class="value">{{ "%.2f"|format(lot.montant_initial_ht) }} €</span>
+                    </div>
+                    <div class="amount-item">
+                      <span class="label">TVA par défaut :</span>
+                      <span class="value">{{ lot.taux_tva }}%</span>
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+            
+            <div class="lot-actions">
+              <a href="{{ url_for('document.lots_assignment', id_projet=projet.id_projet) }}#lot-{{ lot.id_lot }}" 
+                 class="btn btn-primary">Attribuer entreprises</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      
+      <div class="lots-actions">
+        <a href="{{ url_for('document.lots_assignment', id_projet=projet.id_projet) }}" 
+           class="button button-primary">Gérer les attributions</a>
+        
+        <form action="{{ url_for('document.manage_lots', id_projet=projet.id_projet) }}" method="post" 
+              class="add-lots-form" style="display: inline-block;">
+          <input type="hidden" name="action" value="create_lots">
+          
+          <input type="number" name="nombre_lots" min="1" max="10" value="1" 
+                 style="width: 60px; margin-right: 10px;">
+          <button type="submit" class="button button-secondary">Ajouter lots</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="navigation-actions">
+  <a href="{{ url_for('document.projet_details', id_projet=projet.id_projet) }}" class="back-button">Retour au projet</a>
+  
+  {% if lots %}
+    <a href="{{ url_for('document.generate_projet_documents', id_projet=projet.id_projet) }}" 
+       class="button button-success">Générer documents</a>
+  {% endif %}
+</div>
+
+<style>
+  .project-header {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+  }
+  
+  .project-header h2 {
+    margin: 0 0 5px 0;
+  }
+  
+  .project-ref {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.9em;
+  }
+  
+  .lots-section h3 {
+    color: #35424a;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #007bff;
+  }
+  
+  .no-lots {
+    text-align: center;
+    padding: 40px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 2px dashed #ddd;
+  }
+  
+  .create-lots-form .form-group {
+    margin: 20px 0;
+  }
+  
+  .create-lots-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+  }
+  
+  .create-lots-form input[type="number"] {
+    padding: 8px 12px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    width: 100px;
+  }
+  
+  .lots-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+  
+  .lot-card {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+  
+  .lot-card:hover {
+    border-color: #007bff;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.1);
+  }
+  
+  .lot-header {
+    background: #f8f9fa;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .lot-header h4 {
+    margin: 0;
+    color: #35424a;
+  }
+  
+  .lot-id {
+    font-size: 0.8em;
+    color: #6c757d;
+    background: #e9ecef;
+    padding: 2px 8px;
+    border-radius: 12px;
+  }
+  
+  .lot-content {
+    padding: 15px;
+  }
+  
+  .lot-object {
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #35424a;
+  }
+  
+  .lot-amounts {
+    margin-bottom: 15px;
+  }
+  
+  .amount-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+  }
+  
+  .amount-item .label {
+    color: #6c757d;
+  }
+  
+  .amount-item .value {
+    font-weight: bold;
+    color: #35424a;
+  }
+  
+  .lot-enterprises {
+    margin-bottom: 15px;
+  }
+  
+  .lot-enterprises h5 {
+    color: #35424a;
+    margin: 0 0 10px 0;
+    font-size: 0.9em;
+    font-weight: bold;
+  }
+  
+  .entreprise-item {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  
+  .entreprise-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  
+  .mandataire-badge {
+    background: #28a745;
+    color: white;
+    font-size: 0.7em;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
+  
+  .entreprise-amounts {
+    font-size: 0.85em;
+  }
+  
+  .entreprise-amounts .amount-item {
+    margin-bottom: 3px;
+  }
+  
+  .entreprise-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: flex-end;
+  }
+  
+  .btn-edit, .btn-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    text-decoration: none;
+    font-size: 14px;
+    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .btn-edit {
+    background-color: #ffc107;
+    color: #212529;
+  }
+  
+  .btn-edit:hover {
+    background-color: #e0a800;
+    transform: scale(1.1);
+  }
+  
+  .btn-delete {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .btn-delete:hover {
+    background-color: #c82333;
+    transform: scale(1.1);
+  }
+  
+  .no-enterprises {
+    text-align: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px dashed #ddd;
+  }
+  
+  .text-muted {
+    color: #6c757d;
+    font-style: italic;
+    margin-bottom: 10px;
+  }
+  
+  .lot-actions {
+    padding: 15px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+  }
+  
+  .lots-actions {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  
+  .add-lots-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .navigation-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+  }
+  
+  .btn {
+    display: inline-block;
+    padding: 8px 16px;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 0.9em;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .btn-primary {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background-color: #0056b3;
+  }
+  
+  .button {
+    display: inline-block;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .button-primary {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .button-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .button-success {
+    background-color: #28a745;
+    color: white;
+  }
+  
+  .button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+  
+  @media (max-width: 768px) {
+    .lots-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .lots-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .add-lots-form {
+      justify-content: center;
+    }
+    
+    .navigation-actions {
+      flex-direction: column;
+      gap: 15px;
+    }
+  }
+</style>
+{% endblock %}
