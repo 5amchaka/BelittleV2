@@ -183,6 +183,53 @@ def get_lot(id_lot):
     finally:
         close_db(conn)
 
+def update_lot(id_lot, numero_lot=None, objet_marche=None, montant_initial_ht=None, taux_tva=None):
+    """Met à jour un lot"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    try:
+        # Construction dynamique de la requête de mise à jour
+        fields = []
+        values = []
+        
+        if numero_lot is not None:
+            fields.append("numero_lot = ?")
+            values.append(numero_lot)
+        if objet_marche is not None:
+            fields.append("objet_marche = ?")
+            values.append(objet_marche)
+        if montant_initial_ht is not None:
+            fields.append("montant_initial_ht = ?")
+            values.append(montant_initial_ht)
+        if taux_tva is not None:
+            fields.append("taux_tva = ?")
+            values.append(taux_tva)
+        
+        if fields:
+            values.append(id_lot)
+            query = f"UPDATE lots SET {', '.join(fields)} WHERE id_lot = ?"
+            cursor.execute(query, values)
+            conn.commit()
+            return cursor.rowcount > 0
+        
+        return False
+    finally:
+        close_db(conn)
+
+def delete_lot(id_lot):
+    """Supprime un lot et toutes ses données associées"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    try:
+        # Supprimer le lot (les contraintes CASCADE supprimeront les données liées)
+        cursor.execute("DELETE FROM lots WHERE id_lot = ?", (id_lot,))
+        conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        close_db(conn)
+
 def add_entreprise_to_lot(id_lot, id_entreprise, est_mandataire=False, montant_ht=0, taux_tva=20.0):
     """Ajoute une entreprise à un lot (pour gérer la co-traitance)"""
     conn = get_db()

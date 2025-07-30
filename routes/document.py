@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify
 from models.document import get_document_templates, generate_document_data, get_all_moa, get_all_moe, get_all_cotraitants, get_detailed_enterprise_data, format_dc1_data, format_dc2_data, get_projet_document_templates, get_projet_data_for_document
 from models.entreprise import get_enterprises_list, get_chiffres_affaires, add_or_update_chiffre_affaires
-from models.projet import create_projet, get_all_projets, get_projet, update_projet, add_moe_cotraitant, get_moe_cotraitants, create_lot, get_lots_by_projet, add_entreprise_to_lot, get_entreprises_by_lot, create_avenant, get_montant_actuel_lot_entreprise, log_document_generation, delete_projet, update_lot_entreprise, remove_entreprise_from_lot, get_lot_entreprise
+from models.projet import create_projet, get_all_projets, get_projet, update_projet, add_moe_cotraitant, get_moe_cotraitants, create_lot, get_lots_by_projet, add_entreprise_to_lot, get_entreprises_by_lot, create_avenant, get_montant_actuel_lot_entreprise, log_document_generation, delete_projet, update_lot_entreprise, remove_entreprise_from_lot, get_lot_entreprise, get_lot, update_lot, delete_lot
 import os
 import tempfile
 from docxtpl import DocxTemplate
@@ -511,10 +511,64 @@ def projet_details(id_projet):
     lots = get_lots_by_projet(id_projet)
     moe_cotraitants = get_moe_cotraitants(id_projet)
     
+    # Récupérer les entreprises pour chaque lot et calculer le montant total
+    lots_with_enterprises = []
+    for lot in lots:
+        lot_dict = dict(lot)
+        entreprises = get_entreprises_by_lot(lot['id_lot'])
+        lot_dict['entreprises'] = entreprises
+        
+        # Calculer le montant total du lot (somme des montants des entreprises)
+        montant_total = sum(ent['montant_ht'] for ent in entreprises) if entreprises else lot['montant_initial_ht']
+        lot_dict['montant_total_ht'] = montant_total
+        
+        lots_with_enterprises.append(lot_dict)
+    
     return render_template('document/projet_details.html', 
                          projet=projet, 
-                         lots=lots, 
+                         lots=lots_with_enterprises, 
                          moe_cotraitants=moe_cotraitants)
+
+@document.route('/projet/<int:id_projet>/edit', methods=['GET', 'POST'])
+def edit_projet(id_projet):
+    """Modification des données d'un projet"""
+    projet = get_projet(id_projet)
+    if not projet:
+        flash("Projet non trouvé.")
+        return redirect(url_for('document.projets_list'))
+    
+    if request.method == 'POST':
+        # Récupérer les données du formulaire
+        data = {
+            'identification_operation': request.form.get('identification_operation'),
+            'nom_affaire': request.form.get('nom_affaire'),
+            'reference_projet': request.form.get('reference_projet'),
+            'date_notification': request.form.get('date_notification') or None,
+            'id_moa': int(request.form.get('id_moa')) if request.form.get('id_moa') else None,
+            'id_moe': int(request.form.get('id_moe')) if request.form.get('id_moe') else None,
+            'statut': request.form.get('statut')
+        }
+        
+        # Validation
+        if not data['identification_operation']:
+            flash("L'identification de l'opération est obligatoire.")
+            return redirect(request.url)
+        
+        # Mettre à jour le projet
+        if update_projet(id_projet, **data):
+            flash("Projet mis à jour avec succès.")
+            return redirect(url_for('document.projet_details', id_projet=id_projet))
+        else:
+            flash("Erreur lors de la mise à jour du projet.")
+    
+    # GET - Afficher le formulaire
+    moa_list = get_all_moa()
+    moe_list = get_all_moe()
+    
+    return render_template('document/edit_projet.html', 
+                         projet=projet, 
+                         moa_list=moa_list, 
+                         moe_list=moe_list)
 
 @document.route('/projet/<int:id_projet>/moe', methods=['GET', 'POST'])
 def manage_moe_cotraitants(id_projet):
@@ -559,13 +613,18 @@ def manage_lots(id_projet):
         if action == 'create_lots':
             nombre_lots = int(request.form.get('nombre_lots', 1))
             
+            # Récupérer les lots existants pour déterminer le prochain numéro
+            existing_lots = get_lots_by_projet(id_projet)
+            existing_count = len(existing_lots) if existing_lots else 0
+            
             for i in range(1, nombre_lots + 1):
-                numero_lot = f"LOT{i:02d}"
-                objet_marche = f"Lot {i}"
+                lot_number = existing_count + i
+                numero_lot = f"LOT{lot_number:02d}"
+                objet_marche = f"Lot {lot_number}"
                 create_lot(id_projet, numero_lot, objet_marche)
             
             flash(f"{nombre_lots} lot(s) créé(s) avec succès.")
-            return redirect(url_for('document.lots_assignment', id_projet=id_projet))
+            return redirect(url_for('document.manage_lots', id_projet=id_projet))
     
     lots = get_lots_by_projet(id_projet)
     
@@ -680,6 +739,53 @@ def edit_lot_entreprise(id_lot_entreprise):
     return render_template('document/edit_lot_entreprise.html', 
                          lot_entreprise=lot_entreprise, 
                          id_projet=id_projet)
+
+@document.route('/lot/<int:id_lot>/edit', methods=['GET', 'POST'])
+def edit_lot(id_lot):
+    """Édite les informations d'un lot"""
+    lot = get_lot(id_lot)
+    if not lot:
+        flash("Lot non trouvé.")
+        return redirect(url_for('document.projets_list'))
+    
+    if request.method == 'POST':
+        numero_lot = request.form.get('numero_lot')
+        objet_marche = request.form.get('objet_marche')
+        montant_initial_ht = float(request.form.get('montant_initial_ht', 0))
+        taux_tva = float(request.form.get('taux_tva', 20.0))
+        
+        if update_lot(id_lot, numero_lot, objet_marche, montant_initial_ht, taux_tva):
+            flash(f"Lot {numero_lot} mis à jour avec succès.")
+        else:
+            flash("Erreur lors de la mise à jour du lot.")
+        
+        # Récupérer l'ID du projet pour la redirection
+        updated_lot = get_lot(id_lot)
+        if updated_lot:
+            return redirect(url_for('document.manage_lots', id_projet=updated_lot['id_projet']))
+        else:
+            return redirect(url_for('document.projets_list'))
+    
+    # GET - Afficher le formulaire d'édition
+    return render_template('document/edit_lot.html', lot=lot)
+
+@document.route('/lot/<int:id_lot>/delete', methods=['POST'])
+def delete_lot_route(id_lot):
+    """Supprime un lot"""
+    lot = get_lot(id_lot)
+    if not lot:
+        flash("Lot non trouvé.")
+        return redirect(url_for('document.projets_list'))
+    
+    id_projet = lot['id_projet']
+    numero_lot = lot['numero_lot']
+    
+    if delete_lot(id_lot):
+        flash(f"Lot {numero_lot} supprimé avec succès.")
+    else:
+        flash("Erreur lors de la suppression du lot.")
+    
+    return redirect(url_for('document.manage_lots', id_projet=id_projet))
 
 @document.route('/projet/<int:id_projet>/lots/assignment')
 def lots_assignment(id_projet):

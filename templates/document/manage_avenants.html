@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des Avenants - {{ projet.nom_affaire }}{% endblock %}
+
+{% block header %}Gestion des Avenants{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="project-header">
+    <h2>{{ projet.nom_affaire or 'Projet ' + projet.id_projet|string }}</h2>
+    <p class="project-ref">{{ projet.reference_projet }}</p>
+  </div>
+  
+  <div class="avenants-section">
+    <h3>Avenants du projet</h3>
+    
+    {% if lots %}
+      {% for lot in lots %}
+        <div class="lot-section">
+          <h4>{{ lot.numero_lot }} - {{ lot.objet_marche }}</h4>
+          
+          {% if lot.entreprises %}
+            {% for entreprise in lot.entreprises %}
+              <div class="entreprise-avenants">
+                <div class="entreprise-header">
+                  <strong>{{ entreprise.nom_entreprise }}</strong>
+                  {% if entreprise.est_mandataire %}
+                    <span class="mandataire-badge">Mandataire</span>
+                  {% endif %}
+                </div>
+                
+                <div class="montant-info">
+                  <span class="montant-label">Montant actuel HT :</span>
+                  <span class="montant-value">{{ "%.2f"|format(entreprise.montant_actuel.montant_ht) }} €</span>
+                </div>
+                
+                <div class="avenant-form">
+                  <h5>Créer un avenant</h5>
+                  <form method="post" action="{{ url_for('document.create_avenant_route', id_projet=projet.id_projet) }}">
+                    <input type="hidden" name="id_lot_entreprise" value="{{ entreprise.id_lot_entreprise }}">
+                    
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label for="numero_avenant_{{ entreprise.id_lot_entreprise }}">Numéro avenant :</label>
+                        <input type="number" id="numero_avenant_{{ entreprise.id_lot_entreprise }}" 
+                               name="numero_avenant" min="1" required>
+                      </div>
+                      
+                      <div class="form-group">
+                        <label for="date_avenant_{{ entreprise.id_lot_entreprise }}">Date avenant :</label>
+                        <input type="date" id="date_avenant_{{ entreprise.id_lot_entreprise }}" 
+                               name="date_avenant" required>
+                      </div>
+                    </div>
+                    
+                    <div class="form-group">
+                      <label for="objet_avenant_{{ entreprise.id_lot_entreprise }}">Objet avenant :</label>
+                      <input type="text" id="objet_avenant_{{ entreprise.id_lot_entreprise }}" 
+                             name="objet_avenant" required>
+                    </div>
+                    
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label for="montant_precedent_{{ entreprise.id_lot_entreprise }}">Montant précédent HT :</label>
+                        <input type="number" step="0.01" 
+                               id="montant_precedent_{{ entreprise.id_lot_entreprise }}" 
+                               name="montant_precedent_ht" 
+                               value="{{ entreprise.montant_actuel.montant_ht }}" required>
+                      </div>
+                      
+                      <div class="form-group">
+                        <label for="montant_nouveau_{{ entreprise.id_lot_entreprise }}">Nouveau montant HT :</label>
+                        <input type="number" step="0.01" 
+                               id="montant_nouveau_{{ entreprise.id_lot_entreprise }}" 
+                               name="montant_nouveau_ht" required>
+                      </div>
+                    </div>
+                    
+                    <div class="form-group">
+                      <label for="motif_{{ entreprise.id_lot_entreprise }}">Motif (optionnel) :</label>
+                      <textarea id="motif_{{ entreprise.id_lot_entreprise }}" 
+                                name="motif" rows="2"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Créer l'avenant</button>
+                  </form>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted">Aucune entreprise attribuée à ce lot</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-section">
+        <p>Aucun lot trouvé pour ce projet.</p>
+        <a href="{{ url_for('document.manage_lots', id_projet=projet.id_projet) }}" 
+           class="btn btn-primary">Créer des lots</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="navigation-actions">
+  <a href="{{ url_for('document.projet_details', id_projet=projet.id_projet) }}" 
+     class="back-button">← Retour au projet</a>
+</div>
+
+<style>
+  .project-header {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+    color: #212529;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+  }
+  
+  .project-header h2 {
+    margin: 0 0 5px 0;
+  }
+  
+  .project-ref {
+    margin: 0;
+    opacity: 0.8;
+    font-size: 0.9em;
+  }
+  
+  .avenants-section h3 {
+    color: #35424a;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ffc107;
+  }
+  
+  .lot-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+  }
+  
+  .lot-section h4 {
+    color: #35424a;
+    margin: 0 0 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .entreprise-avenants {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .entreprise-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  
+  .mandataire-badge {
+    background: #28a745;
+    color: white;
+    font-size: 0.7em;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
+  
+  .montant-info {
+    background: #e8f5e8;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+  }
+  
+  .montant-label {
+    color: #6c757d;
+    font-size: 0.9em;
+  }
+  
+  .montant-value {
+    font-weight: bold;
+    color: #28a745;
+    margin-left: 10px;
+  }
+  
+  .avenant-form {
+    border-top: 1px solid #e9ecef;
+    padding-top: 15px;
+  }
+  
+  .avenant-form h5 {
+    color: #35424a;
+    margin: 0 0 15px 0;
+    font-size: 1em;
+  }
+  
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #35424a;
+  }
+  
+  .form-group input,
+  .form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+  
+  .form-group input:focus,
+  .form-group textarea:focus {
+    border-color: #ffc107;
+    outline: none;
+  }
+  
+  .btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .btn:hover {
+    background-color: #0056b3;
+    transform: translateY(-1px);
+  }
+  
+  .btn-primary {
+    background-color: #007bff;
+  }
+  
+  .empty-section {
+    text-align: center;
+    padding: 40px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 2px dashed #ddd;
+  }
+  
+  .text-muted {
+    color: #6c757d;
+    font-style: italic;
+  }
+  
+  .navigation-actions {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+  }
+  
+  .back-button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #6c757d;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: all 0.3s;
+  }
+  
+  .back-button:hover {
+    background-color: #545b62;
+    transform: translateY(-1px);
+  }
+  
+  @media (max-width: 768px) {
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}

@@ -32,17 +32,12 @@
       
       <div class="info-item">
         <strong>👷 Maître d'Œuvre (MOE)</strong>
-        <p>{{ projet.nom_moe or 'Non spécifié' }}</p>
+        <p>{{ projet.nom_mandataire or projet.nom_moe or 'Non spécifié' }}</p>
       </div>
       
       <div class="info-item">
         <strong>📅 Date de notification</strong>
         <p>{{ projet.date_notification or 'Non spécifiée' }}</p>
-      </div>
-      
-      <div class="info-item">
-        <strong>🎯 Mandataire MOE</strong>
-        <p>{{ projet.nom_mandataire or 'Non désigné' }}</p>
       </div>
     </div>
   </div>
@@ -86,9 +81,28 @@
           <div class="lot-card">
             <div class="lot-header">
               <h4>{{ lot.numero_lot }}</h4>
-              <span class="lot-amount">{{ "%.2f"|format(lot.montant_initial_ht) }} € HT</span>
+              <span class="lot-amount">{{ "%.2f"|format(lot.montant_total_ht) }} € HT</span>
             </div>
             <p class="lot-object">{{ lot.objet_marche }}</p>
+            
+            {% if lot.entreprises %}
+              <div class="lot-entreprises">
+                <h5>Entreprises :</h5>
+                {% for entreprise in lot.entreprises %}
+                  <div class="entreprise-item">
+                    <span class="entreprise-nom">{{ entreprise.nom_entreprise }}</span>
+                    {% if entreprise.est_mandataire %}
+                      <span class="mandataire-badge">Mandataire</span>
+                    {% endif %}
+                    <span class="entreprise-montant">{{ "%.2f"|format(entreprise.montant_ht) }} € HT</span>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="no-entreprises">
+                <p class="text-muted">Aucune entreprise attribuée</p>
+              </div>
+            {% endif %}
           </div>
         {% endfor %}
       </div>
@@ -115,13 +129,14 @@
   <a href="{{ url_for('document.projets_list') }}" class="back-button">← Retour aux projets</a>
   
   <div class="action-buttons">
+    <a href="{{ url_for('document.edit_projet', id_projet=projet.id_projet) }}" 
+       class="btn btn-primary">✏️ Modifier projet</a>
     {% if lots %}
       <a href="{{ url_for('document.generate_projet_documents', id_projet=projet.id_projet) }}" 
          class="btn btn-success">🖨️ Générer documents</a>
       <a href="{{ url_for('document.manage_avenants', id_projet=projet.id_projet) }}" 
          class="btn btn-warning">📝 Avenants</a>
     {% endif %}
-    <button class="btn btn-danger" onclick="confirmDelete({{ projet.id_projet }}, '{{ projet.nom_affaire or 'Projet ' + projet.id_projet|string }}')">🗑️ Supprimer projet</button>
   </div>
 </div>
 
@@ -304,9 +319,58 @@
   }
   
   .lot-object {
-    margin: 0;
+    margin: 0 0 15px 0;
     color: #6c757d;
     font-size: 0.9em;
+  }
+  
+  .lot-entreprises {
+    margin-top: 10px;
+  }
+  
+  .lot-entreprises h5 {
+    margin: 0 0 8px 0;
+    font-size: 0.8em;
+    color: #35424a;
+    font-weight: bold;
+  }
+  
+  .entreprise-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8f9fa;
+    padding: 6px 10px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    font-size: 0.8em;
+  }
+  
+  .entreprise-nom {
+    flex-grow: 1;
+    font-weight: bold;
+    color: #35424a;
+  }
+  
+  .entreprise-montant {
+    color: #28a745;
+    font-weight: bold;
+    margin-left: 10px;
+  }
+  
+  .no-entreprises {
+    text-align: center;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin-top: 10px;
+  }
+  
+  .text-muted {
+    color: #6c757d;
+    font-style: italic;
+    font-size: 0.8em;
+    margin: 0;
   }
   
   .lots-actions,
@@ -415,17 +479,4 @@
   }
 </style>
 
-<!-- Formulaire caché pour la suppression -->
-<form id="delete-form" method="POST" style="display: none;">
-</form>
-
-<script>
-function confirmDelete(projetId, projetNom) {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer le projet "${projetNom}" ?\n\nCette action supprimera définitivement :\n- Le projet et toutes ses informations\n- Tous les lots associés\n- Toutes les attributions d'entreprises\n- Tous les avenants\n- Tous les documents générés\n\nCette action est irréversible.`)) {
-        const form = document.getElementById('delete-form');
-        form.action = `/document/projet/${projetId}/delete`;
-        form.submit();
-    }
-}
-</script>
 {% endblock %}

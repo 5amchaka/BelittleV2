@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Modifier le Lot - {{ lot.numero_lot }}{% endblock %}
+
+{% block header %}Modifier le Lot{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="lot-header">
+    <h2>Modifier le lot {{ lot.numero_lot }}</h2>
+    <p class="lot-ref">ID: {{ lot.id_lot }}</p>
+  </div>
+  
+  <form method="post" class="edit-form">
+    <div class="form-section">
+      <h3>Informations du lot</h3>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="numero_lot">Numéro du lot *</label>
+          <input type="text" id="numero_lot" name="numero_lot" 
+                 value="{{ lot.numero_lot }}" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="montant_initial_ht">Montant initial HT (€)</label>
+          <input type="number" step="0.01" id="montant_initial_ht" 
+                 name="montant_initial_ht" value="{{ lot.montant_initial_ht }}">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="objet_marche">Objet du marché *</label>
+        <textarea id="objet_marche" name="objet_marche" rows="3" required>{{ lot.objet_marche }}</textarea>
+      </div>
+      
+      <div class="form-group">
+        <label for="taux_tva">Taux TVA (%)</label>
+        <input type="number" step="0.1" min="0" max="100" 
+               id="taux_tva" name="taux_tva" value="{{ lot.taux_tva }}">
+      </div>
+    </div>
+    
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Sauvegarder les modifications</button>
+      <a href="{{ url_for('document.manage_lots', id_projet=lot.id_projet) }}" 
+         class="btn btn-secondary">Annuler</a>
+    </div>
+  </form>
+</div>
+
+<style>
+  .lot-header {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+  }
+  
+  .lot-header h2 {
+    margin: 0 0 5px 0;
+  }
+  
+  .lot-ref {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.9em;
+  }
+  
+  .edit-form {
+    max-width: 600px;
+  }
+  
+  .form-section {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+  }
+  
+  .form-section h3 {
+    margin: 0 0 20px 0;
+    color: #35424a;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #17a2b8;
+  }
+  
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #35424a;
+  }
+  
+  .form-group input,
+  .form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+  }
+  
+  .form-group input:focus,
+  .form-group textarea:focus {
+    border-color: #17a2b8;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.1);
+  }
+  
+  .form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+    padding: 20px 0;
+    border-top: 1px solid #e9ecef;
+    margin-top: 30px;
+  }
+  
+  .btn {
+    display: inline-block;
+    padding: 12px 24px;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+    text-align: center;
+  }
+  
+  .btn-primary {
+    background-color: #17a2b8;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background-color: #138496;
+    transform: translateY(-1px);
+  }
+  
+  .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .btn-secondary:hover {
+    background-color: #545b62;
+    transform: translateY(-1px);
+  }
+  
+  @media (max-width: 768px) {
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+      flex-direction: column-reverse;
+    }
+    
+    .btn {
+      width: 100%;
+    }
+  }
+</style>
+{% endblock %}

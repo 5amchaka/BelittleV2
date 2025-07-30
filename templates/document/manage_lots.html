@@ -35,7 +35,26 @@
           <div class="lot-card">
             <div class="lot-header">
               <h4>{{ lot.numero_lot }}</h4>
-              <span class="lot-id">#{{ lot.id_lot }}</span>
+              <div class="lot-header-actions">
+                <span class="lot-id">#{{ lot.id_lot }}</span>
+                <div class="lot-actions-header">
+                  <a href="{{ url_for('document.edit_lot', id_lot=lot.id_lot) }}" 
+                     class="btn btn-edit-lot" title="Modifier le lot">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                    </svg>
+                  </a>
+                  <form method="post" action="{{ url_for('document.delete_lot_route', id_lot=lot.id_lot) }}" 
+                        style="display: inline-block;"
+                        onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer le lot {{ lot.numero_lot }} ?\n\nCela supprimera également toutes les entreprises attribuées à ce lot.')">
+                    <button type="submit" class="btn btn-delete-lot" title="Supprimer le lot">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                      </svg>
+                    </button>
+                  </form>
+                </div>
+              </div>
             </div>
             
             <div class="lot-content">
@@ -70,13 +89,19 @@
                       <div class="entreprise-actions">
                         <a href="{{ url_for('document.edit_lot_entreprise', id_lot_entreprise=entreprise.id_lot_entreprise) }}" 
                            class="btn btn-edit" title="Éditer">
-                          📝
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                          </svg>
                         </a>
                         <form method="post" 
                               action="{{ url_for('document.delete_lot_entreprise', id_lot_entreprise=entreprise.id_lot_entreprise) }}" 
                               style="display: inline-block;"
                               onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer {{ entreprise.nom_entreprise }} de ce lot ?')">
-                          <button type="submit" class="btn btn-delete" title="Supprimer">🗑️</button>
+                          <button type="submit" class="btn btn-delete" title="Supprimer">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                          </button>
                         </form>
                       </div>
                     </div>
@@ -99,17 +124,11 @@
               {% endif %}
             </div>
             
-            <div class="lot-actions">
-              <a href="{{ url_for('document.lots_assignment', id_projet=projet.id_projet) }}#lot-{{ lot.id_lot }}" 
-                 class="btn btn-primary">Attribuer entreprises</a>
-            </div>
           </div>
         {% endfor %}
       </div>
       
       <div class="lots-actions">
-        <a href="{{ url_for('document.lots_assignment', id_projet=projet.id_projet) }}" 
-           class="button button-primary">Gérer les attributions</a>
         
         <form action="{{ url_for('document.manage_lots', id_projet=projet.id_projet) }}" method="post" 
               class="add-lots-form" style="display: inline-block;">
@@ -211,6 +230,17 @@
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid #e9ecef;
+  }
+  
+  .lot-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .lot-actions-header {
+    display: flex;
+    gap: 5px;
   }
   
   .lot-header h4 {
@@ -336,6 +366,40 @@
   }
   
   .btn-delete:hover {
+    background-color: #c82333;
+    transform: scale(1.1);
+  }
+  
+  .btn-edit-lot, .btn-delete-lot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    text-decoration: none;
+    font-size: 12px;
+    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .btn-edit-lot {
+    background-color: #17a2b8;
+    color: white;
+  }
+  
+  .btn-edit-lot:hover {
+    background-color: #138496;
+    transform: scale(1.1);
+  }
+  
+  .btn-delete-lot {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .btn-delete-lot:hover {
     background-color: #c82333;
     transform: scale(1.1);
   }
