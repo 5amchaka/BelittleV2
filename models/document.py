@@ -10,8 +10,8 @@ def get_document_templates():
         {"id": 3, "nom": "Formulaire ATTRI1", "description": "Acte d'engagement"},
         {"id": 4, "nom": "Ordre de Service", "description": "Ordre de service pour démarrage des travaux"},
         {"id": 5, "nom": "Formulaire DC4", "description": "Déclaration de sous-traitance"},
-        {"id": 6, "nom": "Formulaire EXE10", "description": "État d'avancement des travaux"},
-        {"id": 7, "nom": "Formulaire EXE1T", "description": "Avenant au marché"}
+        {"id": 6, "nom": "Formulaire EXE10", "description": "Avenant au marché"},
+        {"id": 7, "nom": "Formulaire EXE1T", "description": "Ordre de service"}
     ]
 
 def get_projet_document_templates():
@@ -20,10 +20,8 @@ def get_projet_document_templates():
         {"type": "ordre_service", "nom": "Ordre de Service", "description": "Ordre de service par entreprise"},
         {"type": "attri1", "nom": "ATTRI-1", "description": "Acte d'engagement par entreprise"},
         {"type": "dc4", "nom": "DC-4", "description": "Déclaration de sous-traitance"},
-        {"type": "exe10", "nom": "EXE-10", "description": "État d'avancement"},
-        {"type": "exe1t", "nom": "EXE-1T", "description": "Avenant au marché"},
-        {"type": "dc1", "nom": "DC-1", "description": "Lettre de candidature (version projet)"},
-        {"type": "dc2", "nom": "DC-2", "description": "Déclaration du candidat (version projet)"}
+        {"type": "exe10", "nom": "EXE-10", "description": "Avenant au marché"},
+        {"type": "exe1t", "nom": "EXE-1T", "description": "Ordre de service"}
     ]
 def get_enterprise_data_for_document(enterprise_id):
     """Récupère toutes les données nécessaires pour remplir un document"""
@@ -341,35 +339,61 @@ def format_dc2_data(dc1_data, moe_data):
 
 # Nouvelles fonctions pour les documents de projet
 
-def format_ordre_service_data(projet_data, lot_data, entreprise_data, montant_data):
+def format_ordre_service_data(projet_data, lot_data, entreprise_data, montant_data, form_data=None):
     """Formate les données pour l'ordre de service"""
+    
+    # Récupérer les données MOA depuis le projet
+    moa_data = {}
+    if projet_data.get('id_moa'):
+        moa_data = get_detailed_enterprise_data(projet_data['id_moa'])
+    
+    # Récupérer les données MOE (mandataire MOE du projet)
+    moe_data = {}
+    if projet_data.get('id_moe_mandataire'):
+        moe_data = get_detailed_enterprise_data(projet_data['id_moe_mandataire'])
+    
+    # Récupérer les données depuis le formulaire si disponibles
+    base_key = ""
+    if form_data and lot_data.get('id_lot') and entreprise_data.get('id_entreprise'):
+        base_key = f"{lot_data['id_lot']}_{entreprise_data['id_entreprise']}"
+    
+    numero_os = form_data.get(f'numero_os_{base_key}', '') if form_data else ''
+    duree_execution_marche = form_data.get(f'duree_execution_marche_{base_key}', '') if form_data else lot_data.get('duree_execution', '')
+    adresse_travaux = form_data.get(f'adresse_travaux_{base_key}', '') if form_data else projet_data.get('adresse_travaux', '')
+    
     return {
-        # Informations du projet
-        "nom_affaire": projet_data.get('nom_affaire', ''),
-        "reference_projet": projet_data.get('reference_projet', ''),
-        "identification_operation": projet_data.get('identification_operation', ''),
-        "date_notification": projet_data.get('date_notification', ''),
-        
-        # Informations du lot
+        # Données spécifiques à l'ordre de service
+        "numero_os": numero_os,
         "numero_lot": lot_data.get('numero_lot', ''),
         "objet_marche": lot_data.get('objet_marche', ''),
         
+        # Informations MOA
+        "nom_moa": moa_data.get('nom_entreprise', '') if moa_data else projet_data.get('nom_moa', ''),
+        "adresse_moa": format_adresse_complete(moa_data) if moa_data else '',
+        
         # Informations de l'entreprise
         "nom_entreprise": entreprise_data.get('nom_entreprise', ''),
-        "siret": entreprise_data.get('siret', ''),
         "adresse_complete": format_adresse_complete(entreprise_data),
-        "email": entreprise_data.get('email_principal', ''),
-        "telephone": entreprise_data.get('numero_telephone', ''),
-        "portable": entreprise_data.get('numero_portable', ''),
-        "referent": entreprise_data.get('referent', ''),
+        "telephone_entreprise": entreprise_data.get('numero_telephone', ''),
+        "email_entreprise": entreprise_data.get('email_principal', ''),
+        "siret": entreprise_data.get('siret', ''),
+        
+        # Informations MOE
+        "nom_moe": moe_data.get('nom_entreprise', '') if moe_data else '',
+        "denomination_moe": moe_data.get('prestations', '') if moe_data else '',
+        "adresse_moe": format_adresse_complete(moe_data) if moe_data else '',
+        "telephone_moe": moe_data.get('numero_telephone', '') if moe_data else '',
+        "email_moe": moe_data.get('email_principal', '') if moe_data else '',
+        
+        # Informations du projet
+        "reference_projet": projet_data.get('reference_projet', ''),
+        "date_notification": projet_data.get('date_notification', ''),
+        "duree_execution_marche": duree_execution_marche,
+        "adresse_travaux": adresse_travaux,
         
         # Informations financières
-        "montant_ht": montant_data.get('montant_ht', 0),
-        "montant_ttc": montant_data.get('montant_ttc', 0),
-        "taux_tva": montant_data.get('taux_tva', 20.0),
-        
-        # Statut dans le lot
-        "est_mandataire": entreprise_data.get('est_mandataire', False)
+        "montant_initial_ht": format_montant_euro(montant_data.get('montant_ht', 0)),
+        "montant_initial_ttc": format_montant_euro(montant_data.get('montant_ht', 0) * (1 + montant_data.get('taux_tva', 20.0) / 100))
     }
 
 def format_attri1_data(projet_data, lot_data, entreprise_data, montant_data):
@@ -435,7 +459,7 @@ def format_montant_euro(montant):
     return f"{montant_arrondi:,.2f} €".replace(",", " ")
 
 def format_exe10_data(projet_data, lot_data, entreprise_data, montant_data, avancement_pct=0, avenant_data=None):
-    """Formate les données pour l'EXE-10 (état d'avancement)"""
+    """Formate les données pour l'EXE-10 (avenant au marché)"""
     
     # Récupérer les données MOA depuis le projet
     moa_data = {}
@@ -509,37 +533,73 @@ def format_exe10_data(projet_data, lot_data, entreprise_data, montant_data, avan
         "montant_realise_ttc": format_montant_euro(montant_final_ht * (1 + taux_tva / 100) * avancement_pct / 100)
     }
 
-def format_exe1t_data(projet_data, lot_data, entreprise_data, avenant_data):
-    """Formate les données pour l'EXE-1T (avenant)"""
+def format_exe1t_data(projet_data, lot_data, entreprise_data, avenant_data, montant_data, form_data=None):
+    """Formate les données pour l'EXE-1T (ordre de service)"""
+    
+    # Récupérer les données MOA depuis le projet
+    moa_data = {}
+    if projet_data.get('id_moa'):
+        moa_data = get_detailed_enterprise_data(projet_data['id_moa'])
+    
+    # Récupérer les données MOE (mandataire MOE du projet)
+    moe_data = {}
+    if projet_data.get('id_moe_mandataire'):
+        moe_data = get_detailed_enterprise_data(projet_data['id_moe_mandataire'])
+    
+    # Récupérer les données depuis le formulaire si disponibles
+    base_key = ""
+    if form_data and lot_data.get('id_lot') and entreprise_data.get('id_entreprise'):
+        base_key = f"{lot_data['id_lot']}_{entreprise_data['id_entreprise']}"
+    
+    numero_os = form_data.get(f'numero_os_{base_key}', '') if form_data else ''
+    duree_execution_marche = form_data.get(f'duree_execution_marche_{base_key}', '') if form_data else lot_data.get('duree_execution', '')
+    adresse_travaux = form_data.get(f'adresse_travaux_{base_key}', '') if form_data else projet_data.get('adresse_travaux', '')
+    
     return {
-        # Informations du projet
-        "nom_affaire": projet_data.get('nom_affaire', ''),
-        "reference_projet": projet_data.get('reference_projet', ''),
-        "identification_operation": projet_data.get('identification_operation', ''),
-        
-        # Informations du lot
+        # Données similaires à l'ordre de service (EXE-1T est pour marchés publics, OS pour privé)
+        "numero_os": numero_os,  # Numéro d'ordre de service pour EXE-1T
         "numero_lot": lot_data.get('numero_lot', ''),
         "objet_marche": lot_data.get('objet_marche', ''),
         
+        # Informations MOA
+        "nom_moa": moa_data.get('nom_entreprise', '') if moa_data else projet_data.get('nom_moa', ''),
+        "adresse_moa": format_adresse_complete(moa_data) if moa_data else '',
+        
         # Informations de l'entreprise
         "nom_entreprise": entreprise_data.get('nom_entreprise', ''),
-        "siret": entreprise_data.get('siret', ''),
         "adresse_complete": format_adresse_complete(entreprise_data),
+        "telephone_entreprise": entreprise_data.get('numero_telephone', ''),
+        "email_entreprise": entreprise_data.get('email_principal', ''),
+        "siret": entreprise_data.get('siret', ''),
         
-        # Informations de l'avenant
-        "numero_avenant": avenant_data.get('numero_avenant', ''),
-        "objet_avenant": avenant_data.get('objet_avenant', ''),
-        "date_avenant": avenant_data.get('date_avenant', ''),
-        "motif": avenant_data.get('motif', ''),
+        # Informations MOE
+        "nom_moe": moe_data.get('nom_entreprise', '') if moe_data else '',
+        "denomination_moe": moe_data.get('prestations', '') if moe_data else '',
+        "adresse_moe": format_adresse_complete(moe_data) if moe_data else '',
+        "telephone_moe": moe_data.get('numero_telephone', '') if moe_data else '',
+        "email_moe": moe_data.get('email_principal', '') if moe_data else '',
         
-        # Montants
-        "montant_precedent_ht": avenant_data.get('montant_precedent_ht', 0),
-        "montant_nouveau_ht": avenant_data.get('montant_nouveau_ht', 0),
-        "taux_tva": avenant_data.get('taux_tva', 20.0),
-        "montant_precedent_ttc": avenant_data.get('montant_precedent_ht', 0) * (1 + avenant_data.get('taux_tva', 20.0) / 100),
-        "montant_nouveau_ttc": avenant_data.get('montant_nouveau_ht', 0) * (1 + avenant_data.get('taux_tva', 20.0) / 100),
-        "difference_ht": avenant_data.get('montant_nouveau_ht', 0) - avenant_data.get('montant_precedent_ht', 0),
-        "difference_ttc": (avenant_data.get('montant_nouveau_ht', 0) - avenant_data.get('montant_precedent_ht', 0)) * (1 + avenant_data.get('taux_tva', 20.0) / 100)
+        # Informations du projet
+        "reference_projet": projet_data.get('reference_projet', ''),
+        "date_notification": projet_data.get('date_notification', ''),
+        "duree_execution_marche": duree_execution_marche,
+        "adresse_travaux": adresse_travaux,
+        
+        # Informations financières (montants initiaux)
+        "montant_initial_ht": format_montant_euro(montant_data.get('montant_ht', 0)),
+        "montant_initial_ttc": format_montant_euro(montant_data.get('montant_ht', 0) * (1 + montant_data.get('taux_tva', 20.0) / 100)),
+        
+        # Informations complémentaires (disponibles via avenant_data si fourni)
+        "numero_avenant": avenant_data.get('numero_avenant', '') if avenant_data else '',
+        "objet_avenant": avenant_data.get('objet_avenant', '') if avenant_data else '',
+        "date_avenant": avenant_data.get('date_avenant', '') if avenant_data else '',
+        "motif": avenant_data.get('motif', '') if avenant_data else '',
+        "montant_precedent_ht": format_montant_euro(avenant_data.get('montant_precedent_ht', 0)) if avenant_data else '',
+        "montant_nouveau_ht": format_montant_euro(avenant_data.get('montant_nouveau_ht', 0)) if avenant_data else '',
+        "montant_precedent_ttc": format_montant_euro(avenant_data.get('montant_precedent_ht', 0) * (1 + avenant_data.get('taux_tva', 20.0) / 100)) if avenant_data else '',
+        "montant_nouveau_ttc": format_montant_euro(avenant_data.get('montant_nouveau_ht', 0) * (1 + avenant_data.get('taux_tva', 20.0) / 100)) if avenant_data else '',
+        "difference_ht": format_montant_euro(avenant_data.get('montant_nouveau_ht', 0) - avenant_data.get('montant_precedent_ht', 0)) if avenant_data else '',
+        "difference_ttc": format_montant_euro((avenant_data.get('montant_nouveau_ht', 0) - avenant_data.get('montant_precedent_ht', 0)) * (1 + avenant_data.get('taux_tva', 20.0) / 100)) if avenant_data else ''
     }
 
 def format_adresse_complete(entreprise_data):
@@ -587,7 +647,7 @@ def get_projet_data_for_document(id_projet, type_document, id_lot=None, id_entre
     
     # Formater selon le type de document
     if type_document == "ordre_service":
-        return format_ordre_service_data(projet_data, lot_data, entreprise_data, montant_data)
+        return format_ordre_service_data(projet_data, lot_data, entreprise_data, montant_data, None)
     
     elif type_document == "attri1":
         return format_attri1_data(projet_data, lot_data, entreprise_data, montant_data)
@@ -602,7 +662,7 @@ def get_projet_data_for_document(id_projet, type_document, id_lot=None, id_entre
     
     elif type_document == "exe1t":
         avenant_data = kwargs.get('avenant_data', {})
-        return format_exe1t_data(projet_data, lot_data, entreprise_data, avenant_data)
+        return format_exe1t_data(projet_data, lot_data, entreprise_data, avenant_data, montant_data, None)
     
     elif type_document == "dc1":
         # Version projet du DC1
@@ -700,7 +760,7 @@ def get_data_for_ordre_service(lot, entreprise, form_data):
     if montant_data:
         montant_data = dict(montant_data)
     
-    return format_ordre_service_data(projet_data, lot_dict, entreprise_data, montant_data)
+    return format_ordre_service_data(projet_data, lot_dict, entreprise_data, montant_data, form_data)
 
 def get_data_for_attri1(lot, entreprise, form_data):
     """Génère les données pour un ATTRI1"""
@@ -748,7 +808,7 @@ def get_data_for_dc4(lot, entreprise, form_data):
     return format_dc4_data(projet_data, lot_dict, entreprise_data, sous_traitants_data)
 
 def get_data_for_exe10(lot, entreprise, form_data):
-    """Génère les données pour un EXE10"""
+    """Génère les données pour un EXE10 (avenant au marché)"""
     # Convertir les Row objects en dictionnaires
     lot_dict = dict(lot) if lot else {}
     entreprise_dict = dict(entreprise) if entreprise else {}
@@ -784,7 +844,7 @@ def get_data_for_exe10(lot, entreprise, form_data):
     return format_exe10_data(projet_data, lot_dict, entreprise_data, montant_data, 0, avenant_data)
 
 def get_data_for_exe1t(lot, entreprise, form_data):
-    """Génère les données pour un EXE1T"""
+    """Génère les données pour un EXE1T (ordre de service)"""
     # Convertir les Row objects en dictionnaires
     lot_dict = dict(lot) if lot else {}
     entreprise_dict = dict(entreprise) if entreprise else {}
@@ -799,6 +859,12 @@ def get_data_for_exe1t(lot, entreprise, form_data):
     # Récupérer les données détaillées de l'entreprise
     entreprise_data = get_detailed_enterprise_data(entreprise_dict.get('id_entreprise'))
     
+    # Récupérer le montant actuel
+    from models.projet import get_montant_actuel_lot_entreprise
+    montant_data = get_montant_actuel_lot_entreprise(entreprise_dict.get('id_lot_entreprise'))
+    if montant_data:
+        montant_data = dict(montant_data)
+    
     # Récupérer les données d'avenant depuis le formulaire
     avenant_data = {
         'numero_avenant': form_data.get(f'numero_avenant_{base_key}', ''),
@@ -810,7 +876,7 @@ def get_data_for_exe1t(lot, entreprise, form_data):
         'taux_tva': 20.0  # TVA par défaut
     }
     
-    return format_exe1t_data(projet_data, lot_dict, entreprise_data, avenant_data)
+    return format_exe1t_data(projet_data, lot_dict, entreprise_data, avenant_data, montant_data, form_data)
 
 def get_data_for_dc1(lot, entreprise, form_data):
     """Génère les données pour un DC1 (version projet)"""
@@ -856,11 +922,11 @@ def analyze_missing_data(id_projet, document_types, lot_ids):
     
     # Définir les champs requis par type de document
     required_fields = {
-        'ordre_service': ['date_demarrage', 'delai_execution'],
+        'ordre_service': ['numero_os', 'duree_execution_marche', 'adresse_travaux'],
         'attri1': [],
         'dc4': [],
         'exe10': ['duree_execution_marche'],
-        'exe1t': ['numero_avenant', 'date_avenant', 'objet_avenant', 'montant_precedent_ht', 'montant_nouveau_ht'],
+        'exe1t': ['numero_os', 'duree_execution_marche', 'adresse_travaux'],
         'dc1': [],
         'dc2': []
     }

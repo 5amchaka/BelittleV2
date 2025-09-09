@@ -144,6 +144,24 @@
                                    id="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
                                    name="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
                                    required>
+                          {% elif field == 'numero_os' %}
+                            <label for="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}">
+                              Numéro d'ordre de service:
+                            </label>
+                            <input type="text"
+                                   id="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   name="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   placeholder="Ex: OS-001, 2024-001..."
+                                   required>
+                          {% elif field == 'adresse_travaux' %}
+                            <label for="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}">
+                              Adresse des travaux:
+                            </label>
+                            <input type="text"
+                                   id="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   name="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   placeholder="Adresse complète du site de travaux..."
+                                   required>
                           {% else %}
                             <label for="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}">
                               {{ field|replace('_', ' ')|title }}:
