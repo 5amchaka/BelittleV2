@@ -34,6 +34,37 @@
                   <span class="montant-value">{{ "%.2f"|format(entreprise.montant_actuel.montant_ht) }} €</span>
                 </div>
                 
+                <!-- Historique des avenants -->
+                {% if entreprise.historique and entreprise.historique.avenants %}
+                <div class="historique-section">
+                  <h6>Historique des avenants</h6>
+                  <div class="historique-list">
+                    {% for avenant in entreprise.historique.avenants %}
+                    <div class="avenant-item">
+                      <div class="avenant-header">
+                        <strong>Avenant n°{{ avenant.numero_avenant }}</strong>
+                        <span class="avenant-date">{{ avenant.date_avenant }}</span>
+                      </div>
+                      <div class="avenant-details">
+                        <div class="avenant-montants">
+                          <span class="montant-precedent">{{ "%.2f"|format(avenant.montant_precedent_ht) }} €</span>
+                          <span class="arrow">→</span>
+                          <span class="montant-nouveau">{{ "%.2f"|format(avenant.montant_nouveau_ht) }} €</span>
+                          <span class="montant-difference 
+                            {% if avenant.montant_nouveau_ht > avenant.montant_precedent_ht %}positive{% else %}negative{% endif %}">
+                            ({{ "+%.2f"|format(avenant.montant_nouveau_ht - avenant.montant_precedent_ht) if avenant.montant_nouveau_ht > avenant.montant_precedent_ht else "%.2f"|format(avenant.montant_nouveau_ht - avenant.montant_precedent_ht) }} €)
+                          </span>
+                        </div>
+                        {% if avenant.objet_avenant %}
+                        <div class="avenant-objet">{{ avenant.objet_avenant }}</div>
+                        {% endif %}
+                      </div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endif %}
+                
                 <div class="avenant-form">
                   <h5>Créer un avenant</h5>
                   <form method="post" action="{{ url_for('document.create_avenant_route', id_projet=projet.id_projet) }}">
@@ -65,15 +96,27 @@
                         <input type="number" step="0.01" 
                                id="montant_precedent_{{ entreprise.id_lot_entreprise }}" 
                                name="montant_precedent_ht" 
-                               value="{{ entreprise.montant_actuel.montant_ht }}" required>
+                               value="{{ entreprise.montant_actuel.montant_ht }}" 
+                               readonly class="readonly-field">
                       </div>
                       
                       <div class="form-group">
-                        <label for="montant_nouveau_{{ entreprise.id_lot_entreprise }}">Nouveau montant HT :</label>
+                        <label for="montant_avenant_{{ entreprise.id_lot_entreprise }}">Montant avenant HT :</label>
                         <input type="number" step="0.01" 
-                               id="montant_nouveau_{{ entreprise.id_lot_entreprise }}" 
-                               name="montant_nouveau_ht" required>
+                               id="montant_avenant_{{ entreprise.id_lot_entreprise }}" 
+                               name="montant_avenant_ht" 
+                               onchange="calculateNewAmount({{ entreprise.id_lot_entreprise }})"
+                               oninput="calculateNewAmount({{ entreprise.id_lot_entreprise }})"
+                               placeholder="Montant de l'avenant">
                       </div>
+                    </div>
+                    
+                    <div class="form-group">
+                      <label for="montant_nouveau_{{ entreprise.id_lot_entreprise }}">Nouveau montant HT :</label>
+                      <input type="number" step="0.01" 
+                             id="montant_nouveau_{{ entreprise.id_lot_entreprise }}" 
+                             name="montant_nouveau_ht" 
+                             readonly class="readonly-field calculated-field" required>
                     </div>
                     
                     <div class="form-group">
@@ -289,10 +332,130 @@
     transform: translateY(-1px);
   }
   
+  /* Styles pour l'historique */
+  .historique-section {
+    background: #f8f9fa;
+    border-left: 4px solid #ffc107;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 6px;
+  }
+  
+  .historique-section h6 {
+    color: #35424a;
+    margin: 0 0 10px 0;
+    font-size: 0.9em;
+    font-weight: bold;
+  }
+  
+  .historique-list {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  
+  .avenant-item {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  
+  .avenant-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+  }
+  
+  .avenant-date {
+    color: #6c757d;
+    font-size: 0.8em;
+  }
+  
+  .avenant-montants {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: monospace;
+    font-size: 0.9em;
+  }
+  
+  .arrow {
+    color: #007bff;
+    font-weight: bold;
+  }
+  
+  .montant-precedent {
+    color: #6c757d;
+  }
+  
+  .montant-nouveau {
+    color: #35424a;
+    font-weight: bold;
+  }
+  
+  .montant-difference.positive {
+    color: #28a745;
+    font-weight: bold;
+  }
+  
+  .montant-difference.negative {
+    color: #dc3545;
+    font-weight: bold;
+  }
+  
+  .avenant-objet {
+    font-size: 0.8em;
+    color: #6c757d;
+    font-style: italic;
+    margin-top: 5px;
+  }
+  
+  /* Styles pour les champs calculés */
+  .readonly-field {
+    background-color: #f8f9fa !important;
+    color: #6c757d !important;
+    cursor: not-allowed;
+  }
+  
+  .calculated-field {
+    background-color: #e8f5e8 !important;
+    color: #28a745 !important;
+    font-weight: bold;
+  }
+
   @media (max-width: 768px) {
     .form-row {
       grid-template-columns: 1fr;
     }
+    
+    .avenant-montants {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+    }
   }
 </style>
+
+<script>
+function calculateNewAmount(idLotEntreprise) {
+  const montantPrecedent = parseFloat(document.getElementById('montant_precedent_' + idLotEntreprise).value) || 0;
+  const montantAvenant = parseFloat(document.getElementById('montant_avenant_' + idLotEntreprise).value) || 0;
+  const montantNouveauField = document.getElementById('montant_nouveau_' + idLotEntreprise);
+  
+  const montantNouveau = montantPrecedent + montantAvenant;
+  montantNouveauField.value = montantNouveau.toFixed(2);
+  
+  // Validation : s'assurer que le montant nouveau est positif
+  if (montantNouveau < 0) {
+    montantNouveauField.style.color = '#dc3545';
+    montantNouveauField.style.borderColor = '#dc3545';
+  } else {
+    montantNouveauField.style.color = '#28a745';
+    montantNouveauField.style.borderColor = '#28a745';
+  }
+}
+</script>
 {% endblock %}

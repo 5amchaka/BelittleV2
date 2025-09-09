@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify, session
 from models.document import get_document_templates, generate_document_data, get_all_moa, get_all_moe, get_all_cotraitants, get_detailed_enterprise_data, format_dc1_data, format_dc2_data, get_projet_document_templates, get_projet_data_for_document
 from models.entreprise import get_enterprises_list, get_chiffres_affaires, add_or_update_chiffre_affaires
-from models.projet import create_projet, get_all_projets, get_projet, update_projet, add_moe_cotraitant, get_moe_cotraitants, create_lot, get_lots_by_projet, add_entreprise_to_lot, get_entreprises_by_lot, create_avenant, get_montant_actuel_lot_entreprise, log_document_generation, delete_projet, update_lot_entreprise, remove_entreprise_from_lot, get_lot_entreprise, get_lot, update_lot, delete_lot
+from models.projet import create_projet, get_all_projets, get_projet, update_projet, add_moe_cotraitant, get_moe_cotraitants, create_lot, get_lots_by_projet, add_entreprise_to_lot, get_entreprises_by_lot, create_avenant, get_montant_actuel_lot_entreprise, get_historique_montants_lot_entreprise, log_document_generation, delete_projet, update_lot_entreprise, remove_entreprise_from_lot, get_lot_entreprise, get_lot, update_lot, delete_lot
 import os
 import tempfile
 from docxtpl import DocxTemplate
@@ -842,13 +842,69 @@ def generate_projet_documents(id_projet):
     lots_with_enterprises = []
     for lot in lots:
         lot_dict = dict(lot)
-        lot_dict['entreprises'] = get_entreprises_by_lot(lot['id_lot'])
+        entreprises = get_entreprises_by_lot(lot['id_lot'])
+        lot_dict['entreprises'] = [dict(entreprise) for entreprise in entreprises]
         lots_with_enterprises.append(lot_dict)
     
     return render_template('document/generate_projet_documents.html', 
                          projet=projet, 
                          lots=lots_with_enterprises, 
                          templates=templates)
+
+@document.route('/projet/<int:id_projet>/prepare_documents', methods=['POST'])
+def prepare_documents(id_projet):
+    """Prépare la génération de plusieurs documents"""
+    from models.document import analyze_missing_data
+    
+    document_types = request.form.getlist('document_types')
+    lot_ids = request.form.getlist('lot_ids')
+    
+    if not document_types:
+        flash('Veuillez sélectionner au moins un type de document.', 'error')
+        return redirect(url_for('document.generate_projet_documents', id_projet=id_projet))
+    
+    if not lot_ids:
+        flash('Veuillez sélectionner au moins un lot.', 'error')
+        return redirect(url_for('document.generate_projet_documents', id_projet=id_projet))
+    
+    # Convertir les IDs en entiers
+    lot_ids = [int(id) for id in lot_ids]
+    
+    # Analyser les données manquantes
+    missing_data = analyze_missing_data(id_projet, document_types, lot_ids)
+    
+    # Stocker les sélections en session
+    session['document_generation'] = {
+        'id_projet': id_projet,
+        'document_types': document_types,
+        'lot_ids': lot_ids,
+        'missing_data': missing_data
+    }
+    
+    return redirect(url_for('document.complete_documents', id_projet=id_projet))
+
+@document.route('/projet/<int:id_projet>/complete_documents', methods=['GET', 'POST'])
+def complete_documents(id_projet):
+    """Formulaire de completion des données manquantes"""
+    if 'document_generation' not in session:
+        flash('Session expirée. Veuillez recommencer.', 'error')
+        return redirect(url_for('document.generate_projet_documents', id_projet=id_projet))
+    
+    generation_data = session['document_generation']
+    
+    if request.method == 'GET':
+        # Afficher le formulaire de completion
+        projet = get_projet(id_projet)
+        if not projet:
+            flash('Projet non trouvé.', 'error')
+            return redirect(url_for('document.projets'))
+        
+        return render_template('document/complete_documents_data.html',
+                             projet=projet,
+                             generation_data=generation_data)
+    
+    # POST: traiter la soumission du formulaire et générer les documents
+    return generate_multiple_documents(id_projet, generation_data, request.form)
 
 @document.route('/projet/<int:id_projet>/generate_document', methods=['POST'])
 def generate_single_projet_document(id_projet):
@@ -942,7 +998,7 @@ def manage_avenants(id_projet):
     
     lots = get_lots_by_projet(id_projet)
     
-    # Récupérer les entreprises de chaque lot avec leurs montants actuels
+    # Récupérer les entreprises de chaque lot avec leurs montants actuels et historique
     lots_with_data = []
     for lot in lots:
         lot_dict = dict(lot)
@@ -953,6 +1009,11 @@ def manage_avenants(id_projet):
             ent_dict = dict(ent)
             montant_data = get_montant_actuel_lot_entreprise(ent['id_lot_entreprise'])
             ent_dict['montant_actuel'] = montant_data
+            
+            # Récupérer l'historique des avenants
+            historique = get_historique_montants_lot_entreprise(ent['id_lot_entreprise'])
+            ent_dict['historique'] = historique
+            
             entreprises_with_montants.append(ent_dict)
         
         lot_dict['entreprises'] = entreprises_with_montants
@@ -1013,3 +1074,133 @@ def delete_projet_route(id_projet):
         flash("Erreur lors de la suppression du projet.")
     
     return redirect(url_for('document.projets_list'))
+
+def generate_multiple_documents(id_projet, generation_data, form_data):
+    """Génère plusieurs documents et les retourne dans un ZIP"""
+    import zipfile
+    import tempfile
+    import os
+    from io import BytesIO
+    from models.document import (
+        get_data_for_ordre_service, get_data_for_attri1, get_data_for_dc4,
+        get_data_for_exe10, get_data_for_exe1t, get_data_for_dc1, get_data_for_dc2
+    )
+    
+    # Dictionnaire des fonctions de génération par type de document
+    generation_functions = {
+        'ordre_service': get_data_for_ordre_service,
+        'attri1': get_data_for_attri1,
+        'dc4': get_data_for_dc4,
+        'exe10': get_data_for_exe10,
+        'exe1t': get_data_for_exe1t,
+        'dc1': get_data_for_dc1,
+        'dc2': get_data_for_dc2
+    }
+    
+    generated_documents = []
+    errors = []
+    
+    try:
+        # Créer un dossier temporaire
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Pour chaque lot et entreprise, générer les documents sélectionnés
+            for lot_data in generation_data['missing_data']['lots_data']:
+                lot = lot_data['lot']
+                
+                for enterprise_data in lot_data['enterprises']:
+                    entreprise = enterprise_data['entreprise']
+                    
+                    # Pour chaque type de document sélectionné
+                    for doc_type in generation_data['document_types']:
+                        try:
+                            if doc_type in generation_functions:
+                                # Générer les données pour le document
+                                doc_data = generation_functions[doc_type](lot, entreprise, form_data)
+                                
+                                if doc_data:
+                                    # Définir le chemin du template
+                                    template_name = f"{doc_type}_template.docx"
+                                    template_path = os.path.join(
+                                        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
+                                        'templates/document_templates', 
+                                        template_name
+                                    )
+                                    
+                                    # Vérifier si le template existe
+                                    if os.path.exists(template_path):
+                                        # Générer le document avec DocxTemplate
+                                        doc = DocxTemplate(template_path)
+                                        doc.render(doc_data)
+                                        
+                                        # Sauvegarder le document dans le dossier temporaire
+                                        filename = f"{doc_type.upper()}_{lot['numero_lot']}_{entreprise['nom_entreprise'].replace(' ', '_')}.docx"
+                                        filepath = os.path.join(temp_dir, filename)
+                                        doc.save(filepath)
+                                        
+                                        generated_documents.append({
+                                            'filename': filename,
+                                            'filepath': filepath,
+                                            'doc_type': doc_type,
+                                            'lot': lot['numero_lot'],
+                                            'enterprise': entreprise['nom_entreprise']
+                                        })
+                                        
+                                        # Log de la génération
+                                        log_document_generation(
+                                            generation_data['id_projet'],
+                                            doc_type,
+                                            filename,
+                                            entreprise['id_entreprise'],
+                                            lot['id_lot']
+                                        )
+                                    else:
+                                        error_msg = f"Template {template_name} non trouvé pour {doc_type}"
+                                        errors.append(error_msg)
+                                else:
+                                    error_msg = f"Impossible de générer les données pour {doc_type}"
+                                    errors.append(error_msg)
+                                
+                        except Exception as e:
+                            error_msg = f"Erreur lors de la génération de {doc_type} pour {entreprise['nom_entreprise']} (Lot {lot['numero_lot']}): {str(e)}"
+                            errors.append(error_msg)
+            
+            if generated_documents:
+                # Créer le fichier ZIP
+                zip_buffer = BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    for doc in generated_documents:
+                        zip_file.write(doc['filepath'], doc['filename'])
+                
+                zip_buffer.seek(0)
+                
+                # Nettoyer la session
+                session.pop('document_generation', None)
+                
+                # Afficher les erreurs s'il y en a
+                if errors:
+                    for error in errors:
+                        flash(error, 'warning')
+                
+                # Retourner le fichier ZIP
+                projet = get_projet(id_projet)
+                projet_name = projet['nom_affaire'] if projet and projet['nom_affaire'] else f'Projet_{id_projet}'
+                zip_filename = f"Documents_{projet_name}_{len(generated_documents)}_docs.zip"
+                
+                return send_file(
+                    zip_buffer,
+                    as_attachment=True,
+                    download_name=zip_filename,
+                    mimetype='application/zip'
+                )
+            else:
+                flash('Aucun document n\'a pu être généré.', 'error')
+                if errors:
+                    for error in errors:
+                        flash(error, 'error')
+                
+                return redirect(url_for('document.generate_projet_documents', id_projet=id_projet))
+                
+    except Exception as e:
+        flash(f'Erreur lors de la génération des documents: {str(e)}', 'error')
+        return redirect(url_for('document.generate_projet_documents', id_projet=id_projet))
+

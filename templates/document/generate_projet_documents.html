@@ -14,108 +14,72 @@
   <div class="documents-section">
     <h3>Générer des documents</h3>
     
-    {% if templates %}
-      <div class="templates-grid">
-        {% for template in templates %}
-          <div class="template-card">
-            <div class="template-header">
-              <h4>{{ template.nom }}</h4>
-              <span class="template-type">{{ template.type }}</span>
-            </div>
-            
-            <p class="template-description">{{ template.description }}</p>
-            
-            <div class="generation-form">
-              <form method="post" action="{{ url_for('document.generate_single_projet_document', id_projet=projet.id_projet) }}">
-                <input type="hidden" name="type_document" value="{{ template.type }}">
-                
-                {% if lots %}
-                  <div class="form-group">
-                    <label for="id_lot_{{ template.type }}">Sélectionner un lot :</label>
-                    <select id="id_lot_{{ template.type }}" name="id_lot" required>
-                      <option value="">-- Choisir un lot --</option>
-                      {% for lot in lots %}
-                        <option value="{{ lot.id_lot }}">{{ lot.numero_lot }} - {{ lot.objet_marche }}</option>
-                      {% endfor %}
-                    </select>
+    {% if templates and lots %}
+      <form method="post" action="{{ url_for('document.prepare_documents', id_projet=projet.id_projet) }}" id="documentSelectionForm">
+        
+        <!-- Sélection des types de documents -->
+        <div class="selection-section">
+          <h4>1. Sélectionnez les types de documents à générer</h4>
+          <div class="documents-grid">
+            {% for template in templates %}
+              <div class="document-checkbox">
+                <input type="checkbox" id="doc_{{ template.type }}" name="document_types" value="{{ template.type }}">
+                <label for="doc_{{ template.type }}" class="document-label">
+                  <div class="document-info">
+                    <span class="document-name">{{ template.nom }}</span>
+                    <span class="document-type">{{ template.type }}</span>
                   </div>
-                  
-                  <div class="form-group">
-                    <label for="id_entreprise_{{ template.type }}">Sélectionner une entreprise :</label>
-                    <select id="id_entreprise_{{ template.type }}" name="id_entreprise" required>
-                      <option value="">-- Choisir une entreprise --</option>
-                      <!-- Les options sont remplies dynamiquement selon le lot sélectionné -->
-                    </select>
-                  </div>
-                  
-                  {% if template.type == 'exe10' %}
-                    <div class="form-group">
-                      <label for="avancement_pct_{{ template.type }}">Pourcentage d'avancement :</label>
-                      <input type="number" id="avancement_pct_{{ template.type }}" 
-                             name="avancement_pct" min="0" max="100" step="0.1" required>
-                    </div>
-                  {% endif %}
-                  
-                  {% if template.type == 'exe1t' %}
-                    <div class="avenant-fields">
-                      <div class="form-row">
-                        <div class="form-group">
-                          <label for="numero_avenant_{{ template.type }}">Numéro avenant :</label>
-                          <input type="text" id="numero_avenant_{{ template.type }}" 
-                                 name="numero_avenant" required>
-                        </div>
-                        
-                        <div class="form-group">
-                          <label for="date_avenant_{{ template.type }}">Date avenant :</label>
-                          <input type="date" id="date_avenant_{{ template.type }}" 
-                                 name="date_avenant" required>
-                        </div>
-                      </div>
-                      
-                      <div class="form-group">
-                        <label for="objet_avenant_{{ template.type }}">Objet avenant :</label>
-                        <input type="text" id="objet_avenant_{{ template.type }}" 
-                               name="objet_avenant" required>
-                      </div>
-                      
-                      <div class="form-row">
-                        <div class="form-group">
-                          <label for="montant_precedent_{{ template.type }}">Montant précédent HT :</label>
-                          <input type="number" step="0.01" 
-                                 id="montant_precedent_{{ template.type }}" 
-                                 name="montant_precedent_ht" required>
-                        </div>
-                        
-                        <div class="form-group">
-                          <label for="montant_nouveau_{{ template.type }}">Nouveau montant HT :</label>
-                          <input type="number" step="0.01" 
-                                 id="montant_nouveau_{{ template.type }}" 
-                                 name="montant_nouveau_ht" required>
-                        </div>
-                      </div>
-                      
-                      <div class="form-group">
-                        <label for="motif_{{ template.type }}">Motif :</label>
-                        <textarea id="motif_{{ template.type }}" name="motif" rows="2"></textarea>
-                      </div>
-                    </div>
-                  {% endif %}
-                  
-                  <div class="form-group">
-                    <label for="format_{{ template.type }}">Format :</label>
-                    <select id="format_{{ template.type }}" name="format">
-                      <option value="docx">Word (.docx)</option>
-                    </select>
-                  </div>
-                  
-                  <button type="submit" class="btn btn-primary">Générer {{ template.nom }}</button>
-                {% else %}
-                  <p class="text-muted">Aucun lot disponible pour ce projet</p>
-                {% endif %}
-              </form>
-            </div>
+                  <p class="document-description">{{ template.description }}</p>
+                </label>
+              </div>
+            {% endfor %}
           </div>
-        {% endfor %}
+        </div>
+
+        <!-- Sélection des lots -->
+        <div class="selection-section">
+          <h4>2. Sélectionnez les lots concernés</h4>
+          <div class="lots-grid">
+            {% for lot in lots %}
+              <div class="lot-checkbox">
+                <input type="checkbox" id="lot_{{ lot.id_lot }}" name="lot_ids" value="{{ lot.id_lot }}">
+                <label for="lot_{{ lot.id_lot }}" class="lot-label">
+                  <div class="lot-header">
+                    <span class="lot-number">Lot {{ lot.numero_lot }}</span>
+                    {% if lot.montant_initial_ht and lot.montant_initial_ht > 0 %}
+                      <span class="lot-amount">{{ "%.2f"|format(lot.montant_initial_ht) }}€ HT</span>
+                    {% else %}
+                      <span class="lot-amount-empty">Montant non défini</span>
+                    {% endif %}
+                  </div>
+                  <p class="lot-description">{{ lot.objet_marche }}</p>
+                  <div class="lot-enterprises">
+                    {% if lot.entreprises %}
+                      <span class="enterprises-count">{{ lot.entreprises|length }} entreprise(s):</span>
+                      {% for entreprise in lot.entreprises %}
+                        <span class="enterprise-name">{{ entreprise.nom_entreprise }}{% if entreprise.est_mandataire %} (Mandataire){% endif %}</span>
+                      {% endfor %}
+                    {% else %}
+                      <span class="no-enterprises">Aucune entreprise assignée</span>
+                    {% endif %}
+                  </div>
+                </label>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Bouton de validation -->
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-large" id="prepareBtn" disabled>
+            Préparer les documents sélectionnés
+          </button>
+        </div>
+      </form>
+      
+    {% elif not lots %}
+      <div class="empty-section">
+        <p>Aucun lot disponible pour ce projet.</p>
       </div>
     {% else %}
       <div class="empty-section">
@@ -156,41 +120,89 @@
     border-bottom: 2px solid #28a745;
   }
   
-  .templates-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 20px;
+  .selection-section {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
   }
   
-  .template-card {
+  .selection-section h4 {
+    color: #35424a;
+    margin-bottom: 15px;
+    font-size: 1.1em;
+  }
+  
+  .documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+  }
+  
+  .document-checkbox {
+    position: relative;
+  }
+  
+  .document-checkbox input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+  }
+  
+  .document-label {
+    display: block;
     background: white;
     border: 2px solid #e9ecef;
     border-radius: 8px;
-    overflow: hidden;
-    transition: all 0.3s;
-  }
-  
-  .template-card:hover {
-    border-color: #28a745;
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.1);
-  }
-  
-  .template-header {
-    background: #f8f9fa;
     padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+  }
+  
+  .document-label:hover {
+    border-color: #28a745;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.1);
+  }
+  
+  .document-checkbox input[type="checkbox"]:checked + .document-label {
+    border-color: #28a745;
+    background: #f8fff8;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.15);
+  }
+  
+  .document-checkbox input[type="checkbox"]:checked + .document-label::before {
+    content: "✓";
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #28a745;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+  }
+  
+  .document-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 8px;
   }
   
-  .template-header h4 {
-    margin: 0;
+  .document-name {
+    font-weight: bold;
     color: #35424a;
   }
   
-  .template-type {
-    background: #28a745;
+  .document-type {
+    background: #6c757d;
     color: white;
     font-size: 0.7em;
     padding: 3px 8px;
@@ -199,57 +211,142 @@
     text-transform: uppercase;
   }
   
-  .template-description {
-    padding: 15px;
+  .document-checkbox input[type="checkbox"]:checked + .document-label .document-type {
+    background: #28a745;
+  }
+  
+  .document-description {
     margin: 0;
     color: #6c757d;
     font-size: 0.9em;
   }
   
-  .generation-form {
-    padding: 15px;
-    border-top: 1px solid #e9ecef;
-  }
-  
-  .form-row {
+  .lots-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: 15px;
   }
   
-  .form-group {
-    margin-bottom: 15px;
+  .lot-checkbox {
+    position: relative;
   }
   
-  .form-group label {
+  .lot-checkbox input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+  }
+  
+  .lot-label {
     display: block;
-    margin-bottom: 5px;
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+  }
+  
+  .lot-label:hover {
+    border-color: #28a745;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.1);
+  }
+  
+  .lot-checkbox input[type="checkbox"]:checked + .lot-label {
+    border-color: #28a745;
+    background: #f8fff8;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.15);
+  }
+  
+  .lot-checkbox input[type="checkbox"]:checked + .lot-label::before {
+    content: "✓";
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #28a745;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+  }
+  
+  .lot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  
+  .lot-number {
     font-weight: bold;
     color: #35424a;
+    font-size: 1.1em;
   }
   
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    width: 100%;
-    padding: 8px 12px;
-    border: 2px solid #ddd;
+  .lot-amount {
+    background: #17a2b8;
+    color: white;
+    padding: 4px 8px;
     border-radius: 4px;
-    box-sizing: border-box;
+    font-size: 0.85em;
+    font-weight: bold;
   }
   
-  .form-group input:focus,
-  .form-group select:focus,
-  .form-group textarea:focus {
-    border-color: #28a745;
-    outline: none;
+  .lot-amount-empty {
+    background: #6c757d;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-style: italic;
   }
   
-  .avenant-fields {
+  .lot-description {
+    margin: 0 0 10px 0;
+    color: #6c757d;
+    font-size: 0.9em;
+  }
+  
+  .lot-enterprises {
+    border-top: 1px solid #e9ecef;
+    padding-top: 10px;
+  }
+  
+  .enterprises-count {
+    display: block;
+    font-size: 0.8em;
+    color: #6c757d;
+    margin-bottom: 5px;
+  }
+  
+  .enterprise-name {
+    display: inline-block;
     background: #f8f9fa;
-    padding: 15px;
-    border-radius: 6px;
-    margin-bottom: 15px;
+    color: #495057;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    margin-right: 5px;
+    margin-bottom: 3px;
+  }
+  
+  .no-enterprises {
+    font-size: 0.8em;
+    color: #dc3545;
+    font-style: italic;
+  }
+  
+  .form-actions {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
   }
   
   .btn {
@@ -273,6 +370,22 @@
   
   .btn-primary {
     background-color: #28a745;
+  }
+  
+  .btn-large {
+    padding: 15px 30px;
+    font-size: 1.1em;
+  }
+  
+  .btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  .btn:disabled:hover {
+    background-color: #6c757d;
+    transform: none;
   }
   
   .empty-section {
@@ -322,38 +435,62 @@
 </style>
 
 <script>
-// JavaScript pour remplir dynamiquement les entreprises selon le lot sélectionné
+// JavaScript pour gérer la sélection des documents et lots
 document.addEventListener('DOMContentLoaded', function() {
-  const lotsData = {{ lots|tojson|safe }};
+  const form = document.getElementById('documentSelectionForm');
+  const prepareBtn = document.getElementById('prepareBtn');
+  const documentCheckboxes = document.querySelectorAll('input[name="document_types"]');
+  const lotCheckboxes = document.querySelectorAll('input[name="lot_ids"]');
   
-  // Pour chaque formulaire de template
-  document.querySelectorAll('[id^="id_lot_"]').forEach(function(lotSelect) {
-    const templateType = lotSelect.id.split('_')[2];
-    const entrepriseSelect = document.getElementById('id_entreprise_' + templateType);
+  // Fonction pour vérifier si le formulaire est valide
+  function updateSubmitButton() {
+    const hasDocuments = Array.from(documentCheckboxes).some(cb => cb.checked);
+    const hasLots = Array.from(lotCheckboxes).some(cb => cb.checked);
     
-    lotSelect.addEventListener('change', function() {
-      // Vider les options d'entreprise
-      entrepriseSelect.innerHTML = '<option value="">-- Choisir une entreprise --</option>';
-      
-      if (this.value) {
-        // Trouver le lot sélectionné
-        const selectedLot = lotsData.find(lot => lot.id_lot == this.value);
-        
-        if (selectedLot && selectedLot.entreprises) {
-          // Ajouter les entreprises du lot
-          selectedLot.entreprises.forEach(function(entreprise) {
-            const option = document.createElement('option');
-            option.value = entreprise.id_entreprise;
-            option.textContent = entreprise.nom_entreprise;
-            if (entreprise.est_mandataire) {
-              option.textContent += ' (Mandataire)';
-            }
-            entrepriseSelect.appendChild(option);
-          });
-        }
-      }
-    });
+    prepareBtn.disabled = !(hasDocuments && hasLots);
+    
+    if (hasDocuments && hasLots) {
+      const docCount = Array.from(documentCheckboxes).filter(cb => cb.checked).length;
+      const lotCount = Array.from(lotCheckboxes).filter(cb => cb.checked).length;
+      prepareBtn.textContent = `Préparer ${docCount} document(s) pour ${lotCount} lot(s)`;
+    } else {
+      prepareBtn.textContent = 'Préparer les documents sélectionnés';
+    }
+  }
+  
+  // Écouter les changements sur les checkboxes
+  documentCheckboxes.forEach(function(checkbox) {
+    checkbox.addEventListener('change', updateSubmitButton);
   });
+  
+  lotCheckboxes.forEach(function(checkbox) {
+    checkbox.addEventListener('change', updateSubmitButton);
+  });
+  
+  // Validation avant soumission
+  form.addEventListener('submit', function(e) {
+    const hasDocuments = Array.from(documentCheckboxes).some(cb => cb.checked);
+    const hasLots = Array.from(lotCheckboxes).some(cb => cb.checked);
+    
+    if (!hasDocuments) {
+      e.preventDefault();
+      alert('Veuillez sélectionner au moins un type de document.');
+      return false;
+    }
+    
+    if (!hasLots) {
+      e.preventDefault();
+      alert('Veuillez sélectionner au moins un lot.');
+      return false;
+    }
+    
+    // Afficher un indicateur de chargement
+    prepareBtn.disabled = true;
+    prepareBtn.textContent = 'Préparation en cours...';
+  });
+  
+  // État initial
+  updateSubmitButton();
 });
 </script>
 {% endblock %}
