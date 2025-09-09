@@ -17,13 +17,13 @@ def get_document_templates():
 def get_projet_document_templates():
     """Récupère la liste des modèles de documents disponibles pour les projets"""
     return [
-        {"id": "ordre_service", "nom": "Ordre de Service", "description": "Ordre de service par entreprise"},
-        {"id": "attri1", "nom": "ATTRI-1", "description": "Acte d'engagement par entreprise"},
-        {"id": "dc4", "nom": "DC-4", "description": "Déclaration de sous-traitance"},
-        {"id": "exe10", "nom": "EXE-10", "description": "État d'avancement"},
-        {"id": "exe1t", "nom": "EXE-1T", "description": "Avenant au marché"},
-        {"id": "dc1", "nom": "DC-1", "description": "Lettre de candidature (version projet)"},
-        {"id": "dc2", "nom": "DC-2", "description": "Déclaration du candidat (version projet)"}
+        {"type": "ordre_service", "nom": "Ordre de Service", "description": "Ordre de service par entreprise"},
+        {"type": "attri1", "nom": "ATTRI-1", "description": "Acte d'engagement par entreprise"},
+        {"type": "dc4", "nom": "DC-4", "description": "Déclaration de sous-traitance"},
+        {"type": "exe10", "nom": "EXE-10", "description": "État d'avancement"},
+        {"type": "exe1t", "nom": "EXE-1T", "description": "Avenant au marché"},
+        {"type": "dc1", "nom": "DC-1", "description": "Lettre de candidature (version projet)"},
+        {"type": "dc2", "nom": "DC-2", "description": "Déclaration du candidat (version projet)"}
     ]
 def get_enterprise_data_for_document(enterprise_id):
     """Récupère toutes les données nécessaires pour remplir un document"""
@@ -426,30 +426,87 @@ def format_dc4_data(projet_data, lot_data, entreprise_data, sous_traitants_data)
         "sous_traitants": sous_traitants_data or []
     }
 
-def format_exe10_data(projet_data, lot_data, entreprise_data, montant_data, avancement_pct=0):
+def format_montant_euro(montant):
+    """Formate un montant en euros avec séparateurs de milliers et 2 décimales"""
+    if montant is None:
+        return "0.00 €"
+    # Arrondir à 2 décimales puis formater avec séparateur de milliers
+    montant_arrondi = round(float(montant), 2)
+    return f"{montant_arrondi:,.2f} €".replace(",", " ")
+
+def format_exe10_data(projet_data, lot_data, entreprise_data, montant_data, avancement_pct=0, avenant_data=None):
     """Formate les données pour l'EXE-10 (état d'avancement)"""
+    
+    # Récupérer les données MOA depuis le projet
+    moa_data = {}
+    if projet_data.get('id_moa'):
+        moa_data = get_detailed_enterprise_data(projet_data['id_moa'])
+    
+    # Calculer les montants selon les formules fournies
+    montant_initial_ht = 0
+    montant_avenant_ht = 0
+    prc_ecart_introduit = 0
+    montant_final_ht = montant_data.get('montant_ht', 0)
+    
+    if avenant_data:
+        montant_initial_ht = avenant_data.get('montant_precedent_ht', 0)
+        montant_nouveau_ht = avenant_data.get('montant_nouveau_ht', 0)
+        montant_avenant_ht = montant_nouveau_ht - montant_initial_ht
+        if montant_initial_ht > 0:
+            prc_ecart_introduit = (montant_avenant_ht / montant_initial_ht) * 100
+        montant_final_ht = montant_nouveau_ht
+    else:
+        # Pas d'avenant, montant initial = montant actuel
+        montant_initial_ht = montant_data.get('montant_ht', 0)
+        montant_final_ht = montant_initial_ht
+    
+    # Calculer les montants TTC
+    taux_tva = montant_data.get('taux_tva', 20.0)
+    montant_initial_ttc = montant_initial_ht * (1 + taux_tva / 100)
+    montant_avenant_ttc = montant_avenant_ht * (1 + taux_tva / 100)
+    montant_final_ttc = montant_final_ht * (1 + taux_tva / 100)
+    
     return {
         # Informations du projet
         "nom_affaire": projet_data.get('nom_affaire', ''),
         "reference_projet": projet_data.get('reference_projet', ''),
         "identification_operation": projet_data.get('identification_operation', ''),
+        "date_notification": projet_data.get('date_notification', ''),
+        
+        # Informations MOA
+        "nom_moa": moa_data.get('nom_entreprise', '') if moa_data else projet_data.get('nom_moa', ''),
+        "adresse_moa": format_adresse_complete(moa_data) if moa_data else '',
         
         # Informations du lot
         "numero_lot": lot_data.get('numero_lot', ''),
         "objet_marche": lot_data.get('objet_marche', ''),
+        "duree_execution_marche": lot_data.get('duree_execution', ''),  # À ajouter via formulaire
         
         # Informations de l'entreprise
         "nom_entreprise": entreprise_data.get('nom_entreprise', ''),
         "siret": entreprise_data.get('siret', ''),
         "adresse_complete": format_adresse_complete(entreprise_data),
+        "telephone_entreprise": entreprise_data.get('numero_telephone', ''),
+        "email_entreprise": entreprise_data.get('email_principal', ''),
         
-        # Informations financières et d'avancement
-        "montant_ht": montant_data.get('montant_ht', 0),
-        "montant_ttc": montant_data.get('montant_ttc', 0),
-        "taux_tva": montant_data.get('taux_tva', 20.0),
-        "avancement_pct": avancement_pct,
-        "montant_realise_ht": (montant_data.get('montant_ht', 0) * avancement_pct / 100),
-        "montant_realise_ttc": (montant_data.get('montant_ttc', 0) * avancement_pct / 100)
+        # Informations d'avenant
+        "numero_avenant": avenant_data.get('numero_avenant', '') if avenant_data else '',
+        "objet_avenant": avenant_data.get('objet_avenant', '') if avenant_data else '',
+        
+        # Informations financières (formatées pour affichage)
+        "montant_initial_ht": format_montant_euro(montant_initial_ht),
+        "montant_initial_ttc": format_montant_euro(montant_initial_ttc),
+        "montant_avenant_ht": format_montant_euro(montant_avenant_ht),
+        "montant_avenant_ttc": format_montant_euro(montant_avenant_ttc),
+        "prc_ecart_introduit": f"{round(prc_ecart_introduit, 2):.2f} %",
+        "montant_final_ht": format_montant_euro(montant_final_ht),
+        "montant_final_ttc": format_montant_euro(montant_final_ttc),
+        "taux_tva": f"{taux_tva:.2f} %",
+        
+        # Informations d'avancement
+        "avancement_pct": f"{avancement_pct:.2f} %",
+        "montant_realise_ht": format_montant_euro(montant_final_ht * avancement_pct / 100),
+        "montant_realise_ttc": format_montant_euro(montant_final_ht * (1 + taux_tva / 100) * avancement_pct / 100)
     }
 
 def format_exe1t_data(projet_data, lot_data, entreprise_data, avenant_data):
@@ -618,3 +675,249 @@ def format_projet_dc2_data(projet_data, entreprise_data):
         "siret_mandataire": f"SIRET: {entreprise_data.get('siret', 'Non spécifié')}",
         "ca_mandataire": ca_mandataire
     }
+
+# Nouvelles fonctions pour la génération multiple de documents
+
+def get_data_for_ordre_service(lot, entreprise, form_data):
+    """Génère les données pour un ordre de service"""
+    # Convertir les Row objects en dictionnaires
+    lot_dict = dict(lot) if lot else {}
+    entreprise_dict = dict(entreprise) if entreprise else {}
+    base_key = f"{lot_dict['id_lot']}_{entreprise_dict['id_entreprise']}"
+    
+    # Récupérer les données du projet
+    from models.projet import get_projet
+    projet_data = get_projet(lot_dict.get('id_projet'))
+    if projet_data:
+        projet_data = dict(projet_data)
+    
+    # Récupérer les données détaillées de l'entreprise
+    entreprise_data = get_detailed_enterprise_data(entreprise_dict.get('id_entreprise'))
+    
+    # Récupérer le montant actuel
+    from models.projet import get_montant_actuel_lot_entreprise
+    montant_data = get_montant_actuel_lot_entreprise(entreprise_dict.get('id_lot_entreprise'))
+    if montant_data:
+        montant_data = dict(montant_data)
+    
+    return format_ordre_service_data(projet_data, lot_dict, entreprise_data, montant_data)
+
+def get_data_for_attri1(lot, entreprise, form_data):
+    """Génère les données pour un ATTRI1"""
+    # Convertir les Row objects en dictionnaires
+    lot_dict = dict(lot) if lot else {}
+    entreprise_dict = dict(entreprise) if entreprise else {}
+    base_key = f"{lot_dict['id_lot']}_{entreprise_dict['id_entreprise']}"
+    
+    # Récupérer les données du projet
+    from models.projet import get_projet
+    projet_data = get_projet(lot_dict.get('id_projet'))
+    if projet_data:
+        projet_data = dict(projet_data)
+    
+    # Récupérer les données détaillées de l'entreprise
+    entreprise_data = get_detailed_enterprise_data(entreprise_dict.get('id_entreprise'))
+    
+    # Récupérer le montant actuel
+    from models.projet import get_montant_actuel_lot_entreprise
+    montant_data = get_montant_actuel_lot_entreprise(entreprise_dict.get('id_lot_entreprise'))
+    if montant_data:
+        montant_data = dict(montant_data)
+    
+    return format_attri1_data(projet_data, lot_dict, entreprise_data, montant_data)
+
+def get_data_for_dc4(lot, entreprise, form_data):
+    """Génère les données pour un DC4"""
+    # Convertir les Row objects en dictionnaires
+    lot_dict = dict(lot) if lot else {}
+    entreprise_dict = dict(entreprise) if entreprise else {}
+    base_key = f"{lot_dict['id_lot']}_{entreprise_dict['id_entreprise']}"
+    
+    # Récupérer les données du projet
+    from models.projet import get_projet
+    projet_data = get_projet(lot_dict.get('id_projet'))
+    if projet_data:
+        projet_data = dict(projet_data)
+    
+    # Récupérer les données détaillées de l'entreprise
+    entreprise_data = get_detailed_enterprise_data(entreprise_dict.get('id_entreprise'))
+    
+    # Pour le DC4, on peut avoir des sous-traitants (à implémenter si nécessaire)
+    sous_traitants_data = []
+    
+    return format_dc4_data(projet_data, lot_dict, entreprise_data, sous_traitants_data)
+
+def get_data_for_exe10(lot, entreprise, form_data):
+    """Génère les données pour un EXE10"""
+    # Convertir les Row objects en dictionnaires
+    lot_dict = dict(lot) if lot else {}
+    entreprise_dict = dict(entreprise) if entreprise else {}
+    base_key = f"{lot_dict['id_lot']}_{entreprise_dict['id_entreprise']}"
+    
+    # Récupérer les données du projet
+    from models.projet import get_projet, get_latest_avenant_by_lot_entreprise
+    projet_data = get_projet(lot_dict.get('id_projet'))
+    if projet_data:
+        projet_data = dict(projet_data)
+    
+    # Récupérer les données détaillées de l'entreprise
+    entreprise_data = get_detailed_enterprise_data(entreprise_dict.get('id_entreprise'))
+    
+    # Récupérer le montant actuel
+    from models.projet import get_montant_actuel_lot_entreprise
+    montant_data = get_montant_actuel_lot_entreprise(entreprise_dict.get('id_lot_entreprise'))
+    if montant_data:
+        montant_data = dict(montant_data)
+    
+    # Récupérer le dernier avenant
+    avenant_data = None
+    id_lot_entreprise = entreprise_dict.get('id_lot_entreprise')
+    if id_lot_entreprise:
+        latest_avenant = get_latest_avenant_by_lot_entreprise(id_lot_entreprise)
+        if latest_avenant:
+            avenant_data = dict(latest_avenant)
+    
+    # Récupérer la durée d'exécution depuis le formulaire
+    duree_execution = form_data.get(f'duree_execution_marche_{base_key}', '')
+    lot_dict['duree_execution'] = duree_execution
+    
+    return format_exe10_data(projet_data, lot_dict, entreprise_data, montant_data, 0, avenant_data)
+
+def get_data_for_exe1t(lot, entreprise, form_data):
+    """Génère les données pour un EXE1T"""
+    # Convertir les Row objects en dictionnaires
+    lot_dict = dict(lot) if lot else {}
+    entreprise_dict = dict(entreprise) if entreprise else {}
+    base_key = f"{lot_dict['id_lot']}_{entreprise_dict['id_entreprise']}"
+    
+    # Récupérer les données du projet
+    from models.projet import get_projet
+    projet_data = get_projet(lot_dict.get('id_projet'))
+    if projet_data:
+        projet_data = dict(projet_data)
+    
+    # Récupérer les données détaillées de l'entreprise
+    entreprise_data = get_detailed_enterprise_data(entreprise_dict.get('id_entreprise'))
+    
+    # Récupérer les données d'avenant depuis le formulaire
+    avenant_data = {
+        'numero_avenant': form_data.get(f'numero_avenant_{base_key}', ''),
+        'date_avenant': form_data.get(f'date_avenant_{base_key}', ''),
+        'objet_avenant': form_data.get(f'objet_avenant_{base_key}', ''),
+        'montant_precedent_ht': float(form_data.get(f'montant_precedent_ht_{base_key}', 0)),
+        'montant_nouveau_ht': float(form_data.get(f'montant_nouveau_ht_{base_key}', 0)),
+        'motif': form_data.get(f'motif_{base_key}', ''),
+        'taux_tva': 20.0  # TVA par défaut
+    }
+    
+    return format_exe1t_data(projet_data, lot_dict, entreprise_data, avenant_data)
+
+def get_data_for_dc1(lot, entreprise, form_data):
+    """Génère les données pour un DC1 (version projet)"""
+    # Convertir les Row objects en dictionnaires
+    lot_dict = dict(lot) if lot else {}
+    
+    # Récupérer les données du projet
+    from models.projet import get_projet
+    projet_data = get_projet(lot_dict.get('id_projet'))
+    if projet_data:
+        projet_data = dict(projet_data)
+    
+    return format_projet_dc1_data(projet_data)
+
+def get_data_for_dc2(lot, entreprise, form_data):
+    """Génère les données pour un DC2 (version projet)"""
+    # Convertir les Row objects en dictionnaires
+    lot_dict = dict(lot) if lot else {}
+    entreprise_dict = dict(entreprise) if entreprise else {}
+    
+    # Récupérer les données du projet
+    from models.projet import get_projet
+    projet_data = get_projet(lot_dict.get('id_projet'))
+    if projet_data:
+        projet_data = dict(projet_data)
+    
+    # Récupérer les données détaillées de l'entreprise
+    entreprise_data = get_detailed_enterprise_data(entreprise_dict.get('id_entreprise'))
+    
+    return format_projet_dc2_data(projet_data, entreprise_data)
+
+def analyze_missing_data(id_projet, document_types, lot_ids):
+    """Analyse les données manquantes pour la génération de documents multiples"""
+    from models.projet import get_projet, get_lot, get_entreprises_by_lot
+    
+    # Récupérer les données du projet
+    projet = get_projet(id_projet)
+    missing_data = {
+        'documents': [],
+        'global_missing': [],
+        'lots_data': []
+    }
+    
+    # Définir les champs requis par type de document
+    required_fields = {
+        'ordre_service': ['date_demarrage', 'delai_execution'],
+        'attri1': [],
+        'dc4': [],
+        'exe10': ['duree_execution_marche'],
+        'exe1t': ['numero_avenant', 'date_avenant', 'objet_avenant', 'montant_precedent_ht', 'montant_nouveau_ht'],
+        'dc1': [],
+        'dc2': []
+    }
+    
+    # Analyser chaque lot sélectionné
+    for lot_id in lot_ids:
+        lot = get_lot(lot_id)
+        if not lot:
+            continue
+            
+        lot_data = {
+            'lot': dict(lot),
+            'enterprises': [],
+            'missing_fields': []
+        }
+        
+        # Récupérer les entreprises du lot
+        entreprises = get_entreprises_by_lot(lot_id)
+        
+        for entreprise in entreprises:
+            entreprise_data = {
+                'entreprise': dict(entreprise),
+                'documents': {}
+            }
+            
+            # Pour chaque type de document sélectionné
+            for doc_type in document_types:
+                doc_missing = []
+                
+                # Vérifier les champs requis pour ce type de document
+                if doc_type in required_fields:
+                    for field in required_fields[doc_type]:
+                        # Logique pour vérifier si le champ est disponible
+                        # Pour le moment, on considère qu'ils sont tous manquants
+                        doc_missing.append(field)
+                
+                entreprise_data['documents'][doc_type] = {
+                    'missing_fields': doc_missing,
+                    'can_generate': len(doc_missing) == 0
+                }
+            
+            lot_data['enterprises'].append(entreprise_data)
+        
+        missing_data['lots_data'].append(lot_data)
+    
+    # Identifier les données globales manquantes au niveau projet
+    if not projet:
+        missing_data['global_missing'].append('projet_introuvable')
+    
+    # Créer la liste des documents à générer
+    for doc_type in document_types:
+        doc_info = next((t for t in get_projet_document_templates() if t['type'] == doc_type), None)
+        if doc_info:
+            missing_data['documents'].append({
+                'type': doc_type,
+                'nom': doc_info['nom'],
+                'description': doc_info['description']
+            })
+    
+    return missing_data

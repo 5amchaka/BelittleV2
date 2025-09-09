@@ -558,3 +558,20 @@ def remove_entreprise_from_lot(id_lot_entreprise):
         return cursor.rowcount > 0
     finally:
         close_db(conn)
+
+def get_latest_avenant_by_lot_entreprise(id_lot_entreprise):
+    """Récupère le dernier avenant d'une entreprise sur un lot"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            SELECT * FROM avenants 
+            WHERE id_lot_entreprise = ? 
+            ORDER BY numero_avenant DESC, date_avenant DESC 
+            LIMIT 1
+        """, (id_lot_entreprise,))
+        
+        return cursor.fetchone()
+    finally:
+        close_db(conn)

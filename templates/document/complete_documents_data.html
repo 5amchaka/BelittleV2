@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+
+{% block title %}Compléter les données - {{ projet.nom_affaire }}{% endblock %}
+
+{% block header %}Compléter les données manquantes{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="project-header">
+    <h2>{{ projet.nom_affaire or 'Projet ' + projet.id_projet|string }}</h2>
+    <p class="project-ref">{{ projet.reference_projet }}</p>
+  </div>
+  
+  <div class="completion-info">
+    <h3>Documents à générer</h3>
+    <div class="selected-documents">
+      {% for doc in generation_data.missing_data.documents %}
+        <span class="document-tag">{{ doc.nom }}</span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <form method="post" action="{{ url_for('document.complete_documents', id_projet=projet.id_projet) }}" id="completionForm">
+    
+    {% if generation_data.missing_data.lots_data %}
+      {% for lot_data in generation_data.missing_data.lots_data %}
+        <div class="lot-section">
+          <div class="lot-header">
+            <h4>Lot {{ lot_data.lot.numero_lot }} - {{ lot_data.lot.objet_marche }}</h4>
+          </div>
+          
+          {% for enterprise_data in lot_data.enterprises %}
+            <div class="enterprise-section">
+              <div class="enterprise-header">
+                <h5>{{ enterprise_data.entreprise.nom_entreprise }}
+                  {% if enterprise_data.entreprise.est_mandataire %}
+                    <span class="mandataire-badge">Mandataire</span>
+                  {% endif %}
+                </h5>
+              </div>
+              
+              <!-- Données existantes (readonly) -->
+              <div class="existing-data">
+                <h6>Informations disponibles</h6>
+                <div class="data-grid">
+                  <div class="data-item">
+                    <label>Nom de l'entreprise:</label>
+                    <input type="text" value="{{ enterprise_data.entreprise.nom_entreprise }}" readonly>
+                  </div>
+                  {% if enterprise_data.entreprise.siret %}
+                  <div class="data-item">
+                    <label>SIRET:</label>
+                    <input type="text" value="{{ enterprise_data.entreprise.siret }}" readonly>
+                  </div>
+                  {% endif %}
+                  {% if enterprise_data.entreprise.adresse %}
+                  <div class="data-item">
+                    <label>Adresse:</label>
+                    <input type="text" value="{{ enterprise_data.entreprise.adresse }}" readonly>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <!-- Documents et champs manquants pour cette entreprise -->
+              {% for doc_type, doc_data in enterprise_data.documents.items() %}
+                {% if doc_data.missing_fields %}
+                  <div class="missing-data-section">
+                    <h6>{{ doc_type|upper }} - Données manquantes</h6>
+                    <div class="missing-fields">
+                      {% for field in doc_data.missing_fields %}
+                        <div class="form-group">
+                          {% if field == 'date_demarrage' %}
+                            <label for="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}">
+                              Date de démarrage:
+                            </label>
+                            <input type="date" 
+                                   id="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   name="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   required>
+                          {% elif field == 'delai_execution' %}
+                            <label for="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}">
+                              Délai d'exécution (jours):
+                            </label>
+                            <input type="number" min="1"
+                                   id="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   name="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   required>
+                          {% elif field == 'avancement_pct' %}
+                            <label for="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}">
+                              Pourcentage d'avancement (%):
+                            </label>
+                            <input type="number" min="0" max="100" step="0.1"
+                                   id="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   name="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   required>
+                          {% elif field == 'duree_execution_marche' %}
+                            <label for="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}">
+                              Durée d'exécution du marché:
+                            </label>
+                            <input type="text"
+                                   id="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   name="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   placeholder="Ex: 12 mois, 180 jours..."
+                                   required>
+                          {% elif field == 'numero_avenant' %}
+                            <label for="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}">
+                              Numéro d'avenant:
+                            </label>
+                            <input type="text"
+                                   id="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   name="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   required>
+                          {% elif field == 'date_avenant' %}
+                            <label for="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}">
+                              Date d'avenant:
+                            </label>
+                            <input type="date"
+                                   id="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   name="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   required>
+                          {% elif field == 'objet_avenant' %}
+                            <label for="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}">
+                              Objet de l'avenant:
+                            </label>
+                            <input type="text"
+                                   id="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   name="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   required>
+                          {% elif field == 'montant_precedent_ht' %}
+                            <label for="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}">
+                              Montant précédent HT (€):
+                            </label>
+                            <input type="number" step="0.01" min="0"
+                                   id="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   name="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   value="{{ lot_data.lot.montant_initial_ht or 0 }}"
+                                   required>
+                          {% elif field == 'montant_nouveau_ht' %}
+                            <label for="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}">
+                              Nouveau montant HT (€):
+                            </label>
+                            <input type="number" step="0.01" min="0"
+                                   id="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   name="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   required>
+                          {% else %}
+                            <label for="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}">
+                              {{ field|replace('_', ' ')|title }}:
+                            </label>
+                            <input type="text"
+                                   id="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   name="{{ field }}_{{ lot_data.lot.id_lot }}_{{ enterprise_data.entreprise.id_entreprise }}"
+                                   required>
+                          {% endif %}
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    {% endif %}
+    
+    <div class="form-actions">
+      <button type="submit" class="btn btn-success btn-large">
+        Générer tous les documents
+      </button>
+      <a href="{{ url_for('document.generate_projet_documents', id_projet=projet.id_projet) }}" 
+         class="btn btn-secondary">
+        Retour à la sélection
+      </a>
+    </div>
+  </form>
+</div>
+
+<style>
+  .project-header {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+  }
+  
+  .project-header h2 {
+    margin: 0 0 5px 0;
+  }
+  
+  .project-ref {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.9em;
+  }
+  
+  .completion-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    border-left: 4px solid #17a2b8;
+  }
+  
+  .completion-info h3 {
+    margin: 0 0 10px 0;
+    color: #35424a;
+  }
+  
+  .selected-documents {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .document-tag {
+    background: #17a2b8;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.85em;
+    font-weight: bold;
+  }
+  
+  .lot-section {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    overflow: hidden;
+  }
+  
+  .lot-header {
+    background: #f8f9fa;
+    padding: 15px;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .lot-header h4 {
+    margin: 0;
+    color: #35424a;
+  }
+  
+  .enterprise-section {
+    padding: 20px;
+    border-bottom: 1px solid #f1f3f4;
+  }
+  
+  .enterprise-section:last-child {
+    border-bottom: none;
+  }
+  
+  .enterprise-header h5 {
+    margin: 0 0 15px 0;
+    color: #35424a;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .mandataire-badge {
+    background: #28a745;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7em;
+    font-weight: bold;
+  }
+  
+  .existing-data {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+  }
+  
+  .existing-data h6 {
+    margin: 0 0 10px 0;
+    color: #6c757d;
+    font-size: 0.9em;
+  }
+  
+  .data-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 10px;
+  }
+  
+  .data-item {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .data-item label {
+    font-size: 0.8em;
+    color: #6c757d;
+    margin-bottom: 3px;
+  }
+  
+  .data-item input[readonly] {
+    background: #e9ecef;
+    border: 1px solid #ced4da;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  
+  .missing-data-section {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .missing-data-section h6 {
+    margin: 0 0 15px 0;
+    color: #856404;
+    font-weight: bold;
+  }
+  
+  .missing-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .form-group label {
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #35424a;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 8px 12px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: #28a745;
+    outline: none;
+  }
+  
+  .form-actions {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+  }
+  
+  .btn {
+    display: inline-block;
+    padding: 10px 20px;
+    margin: 0 10px;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .btn-success {
+    background-color: #28a745;
+    color: white;
+  }
+  
+  .btn-success:hover {
+    background-color: #218838;
+    transform: translateY(-1px);
+  }
+  
+  .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .btn-secondary:hover {
+    background-color: #545b62;
+    transform: translateY(-1px);
+  }
+  
+  .btn-large {
+    padding: 15px 30px;
+    font-size: 1.1em;
+  }
+  
+  @media (max-width: 768px) {
+    .data-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .missing-fields {
+      grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+      text-align: center;
+    }
+    
+    .btn {
+      display: block;
+      margin: 10px auto;
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('completionForm');
+  
+  form.addEventListener('submit', function(e) {
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Génération en cours...';
+  });
+});
+</script>
+{% endblock %}
