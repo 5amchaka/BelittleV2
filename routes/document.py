@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify, session
 from models.document import get_document_templates, generate_document_data, get_all_moa, get_all_moe, get_all_cotraitants, get_detailed_enterprise_data, format_dc1_data, format_dc2_data, get_projet_document_templates, get_projet_data_for_document
 from models.entreprise import get_enterprises_list, get_chiffres_affaires, add_or_update_chiffre_affaires
-from models.projet import create_projet, get_all_projets, get_projet, update_projet, add_moe_cotraitant, get_moe_cotraitants, create_lot, get_lots_by_projet, add_entreprise_to_lot, get_entreprises_by_lot, create_avenant, get_montant_actuel_lot_entreprise, get_historique_montants_lot_entreprise, log_document_generation, delete_projet, update_lot_entreprise, remove_entreprise_from_lot, get_lot_entreprise, get_lot, update_lot, delete_lot
+from models.projet import create_projet, get_all_projets, get_projet, update_projet, add_moe_cotraitant, get_moe_cotraitants, remove_moe_cotraitant, create_lot, get_lots_by_projet, add_entreprise_to_lot, get_entreprises_by_lot, create_avenant, get_montant_actuel_lot_entreprise, get_historique_montants_lot_entreprise, log_document_generation, delete_projet, update_lot_entreprise, remove_entreprise_from_lot, get_lot_entreprise, get_lot, update_lot, delete_lot, delete_latest_avenant_by_lot_entreprise
 import os
 import tempfile
 from docxtpl import DocxTemplate
@@ -599,6 +599,29 @@ def manage_moe_cotraitants(id_projet):
                          moe_list=moe_list, 
                          moe_cotraitants=moe_cotraitants)
 
+@document.route('/projet/<int:id_projet>/moe/<int:id_entreprise>/remove', methods=['POST'])
+def remove_moe_cotraitant_route(id_projet, id_entreprise):
+    """Supprime un MOE co-traitant d'un projet"""
+    projet = get_projet(id_projet)
+    if not projet:
+        flash("Projet non trouvé.")
+        return redirect(url_for('document.projets_list'))
+    
+    # Récupérer le nom de l'entreprise pour le message
+    from models.entreprise import get_enterprise
+    try:
+        entreprise = get_enterprise(id_entreprise)
+        nom_entreprise = entreprise['nom_entreprise'] if entreprise else f"Entreprise {id_entreprise}"
+    except:
+        nom_entreprise = f"Entreprise {id_entreprise}"
+    
+    if remove_moe_cotraitant(id_projet, id_entreprise):
+        flash(f"MOE co-traitant {nom_entreprise} supprimé avec succès.")
+    else:
+        flash("Erreur lors de la suppression du MOE co-traitant.")
+    
+    return redirect(url_for('document.manage_moe_cotraitants', id_projet=id_projet))
+
 @document.route('/projet/<int:id_projet>/lots', methods=['GET', 'POST'])
 def manage_lots(id_projet):
     """Gestion des lots d'un projet"""
@@ -1054,6 +1077,25 @@ def create_avenant_route(id_projet):
         flash("Avenant créé avec succès.")
     else:
         flash("Erreur lors de la création de l'avenant.")
+    
+    return redirect(url_for('document.manage_avenants', id_projet=id_projet))
+
+@document.route('/projet/<int:id_projet>/delete_latest_avenant', methods=['POST'])
+def delete_latest_avenant_route(id_projet):
+    """Supprime le dernier avenant d'une entreprise sur un lot"""
+    id_lot_entreprise = request.form.get('id_lot_entreprise')
+    
+    if not id_lot_entreprise:
+        flash("ID lot-entreprise manquant.")
+        return redirect(url_for('document.manage_avenants', id_projet=id_projet))
+    
+    # Supprimer le dernier avenant
+    success, message = delete_latest_avenant_by_lot_entreprise(int(id_lot_entreprise))
+    
+    if success:
+        flash(message)
+    else:
+        flash(message, 'error')
     
     return redirect(url_for('document.manage_avenants', id_projet=id_projet))
 

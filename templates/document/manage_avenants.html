@@ -37,7 +37,16 @@
                 <!-- Historique des avenants -->
                 {% if entreprise.historique and entreprise.historique.avenants %}
                 <div class="historique-section">
-                  <h6>Historique des avenants</h6>
+                  <div class="historique-header">
+                    <h6>Historique des avenants</h6>
+                    <form method="post" action="{{ url_for('document.delete_latest_avenant_route', id_projet=projet.id_projet) }}" 
+                          onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer le dernier avenant ? Cette action est irréversible.')">
+                      <input type="hidden" name="id_lot_entreprise" value="{{ entreprise.id_lot_entreprise }}">
+                      <button type="submit" class="btn btn-danger btn-sm">
+                        🗑️ Supprimer le dernier avenant
+                      </button>
+                    </form>
+                  </div>
                   <div class="historique-list">
                     {% for avenant in entreprise.historique.avenants %}
                     <div class="avenant-item">
@@ -297,6 +306,19 @@
     background-color: #007bff;
   }
   
+  .btn-danger {
+    background-color: #dc3545;
+  }
+  
+  .btn-danger:hover {
+    background-color: #c82333;
+  }
+  
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 0.8em;
+  }
+  
   .empty-section {
     text-align: center;
     padding: 40px;
@@ -341,9 +363,16 @@
     border-radius: 6px;
   }
   
+  .historique-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  
   .historique-section h6 {
     color: #35424a;
-    margin: 0 0 10px 0;
+    margin: 0;
     font-size: 0.9em;
     font-weight: bold;
   }
@@ -435,6 +464,12 @@
       flex-direction: column;
       align-items: flex-start;
       gap: 4px;
+    }
+    
+    .historique-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
     }
   }
 </style>

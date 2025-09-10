@@ -36,7 +36,7 @@
             
             <div class="moe-actions">
               <form method="post" 
-                    action="{{ url_for('document.remove_moe_cotraitant', id_projet=projet.id_projet, id_entreprise=moe.id_entreprise) }}" 
+                    action="{{ url_for('document.remove_moe_cotraitant_route', id_projet=projet.id_projet, id_entreprise=moe.id_entreprise) }}" 
                     style="display: inline-block;"
                     onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer {{ moe.nom_entreprise }} des co-traitants ?')">
                 <button type="submit" class="btn btn-delete" title="Supprimer">🗑️</button>

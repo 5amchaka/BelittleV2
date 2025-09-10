@@ -139,6 +139,44 @@ def get_moe_cotraitants(id_projet):
     finally:
         close_db(conn)
 
+def remove_moe_cotraitant(id_projet, id_entreprise):
+    """Supprime un MOE co-traitant d'un projet"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    try:
+        # Vérifier si l'entreprise à supprimer était mandataire
+        cursor.execute("""
+            SELECT est_mandataire FROM projet_moe_cotraitants 
+            WHERE id_projet = ? AND id_entreprise = ?
+        """, (id_projet, id_entreprise))
+        
+        result = cursor.fetchone()
+        was_mandataire = result and result['est_mandataire']
+        
+        # Supprimer l'entreprise des co-traitants
+        cursor.execute("""
+            DELETE FROM projet_moe_cotraitants 
+            WHERE id_projet = ? AND id_entreprise = ?
+        """, (id_projet, id_entreprise))
+        
+        # Si c'était un mandataire, retirer la référence au niveau projet
+        if was_mandataire:
+            cursor.execute("""
+                UPDATE projets 
+                SET id_moe_mandataire = NULL 
+                WHERE id_projet = ? AND id_moe_mandataire = ?
+            """, (id_projet, id_entreprise))
+        
+        conn.commit()
+        return cursor.rowcount > 0
+    except Exception as e:
+        conn.rollback()
+        print(f"Erreur lors de la suppression du MOE co-traitant: {e}")
+        return False
+    finally:
+        close_db(conn)
+
 def create_lot(id_projet, numero_lot, objet_marche, montant_initial_ht=0, taux_tva=20.0):
     """Crée un nouveau lot pour un projet"""
     conn = get_db()
@@ -573,5 +611,55 @@ def get_latest_avenant_by_lot_entreprise(id_lot_entreprise):
         """, (id_lot_entreprise,))
         
         return cursor.fetchone()
+    finally:
+        close_db(conn)
+
+def delete_latest_avenant_by_lot_entreprise(id_lot_entreprise):
+    """Supprime le dernier avenant d'une entreprise et met à jour le montant du marché"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    try:
+        # Récupérer le dernier avenant
+        latest_avenant = get_latest_avenant_by_lot_entreprise(id_lot_entreprise)
+        if not latest_avenant:
+            return False, "Aucun avenant trouvé"
+        
+        # Calculer la différence de montant
+        difference = latest_avenant['montant_nouveau_ht'] - latest_avenant['montant_precedent_ht']
+        
+        # Récupérer le montant actuel
+        cursor.execute("""
+            SELECT montant_ht FROM lot_entreprises 
+            WHERE id_lot_entreprise = ?
+        """, (id_lot_entreprise,))
+        
+        result = cursor.fetchone()
+        if not result:
+            return False, "Entreprise-lot non trouvée"
+        
+        montant_actuel = result['montant_ht']
+        nouveau_montant = montant_actuel - difference
+        
+        # Supprimer l'avenant
+        cursor.execute("""
+            DELETE FROM avenants 
+            WHERE id_avenant = ?
+        """, (latest_avenant['id_avenant'],))
+        
+        # Mettre à jour le montant dans lot_entreprises
+        cursor.execute("""
+            UPDATE lot_entreprises 
+            SET montant_ht = ? 
+            WHERE id_lot_entreprise = ?
+        """, (nouveau_montant, id_lot_entreprise))
+        
+        conn.commit()
+        return True, f"Avenant n°{latest_avenant['numero_avenant']} supprimé avec succès"
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"Erreur lors de la suppression de l'avenant: {e}")
+        return False, f"Erreur lors de la suppression: {str(e)}"
     finally:
         close_db(conn)
