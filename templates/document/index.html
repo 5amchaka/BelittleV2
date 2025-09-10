@@ -27,17 +27,14 @@
   
   <div class="document-list">
     {% for template in templates %}
-      <div class="document-item">
-        <h3>{{ template.nom }}</h3>
-        <p>{{ template.description }}</p>
-        {% if template.id == 1 %}
+      {% if template.id == 1 %}
+        <div class="document-item">
+          <h3>{{ template.nom }}</h3>
+          <p>{{ template.description }}</p>
           <!-- Interface spéciale pour le DC1 -->
           <a href="{{ url_for('document.dc1_form') }}" class="button">Sélectionner</a>
-        {% else %}
-          <!-- Interface générique pour les autres documents -->
-          <a href="{{ url_for('document.select_enterprise', document_id=template.id) }}" class="button">Sélectionner</a>
-        {% endif %}
-      </div>
+        </div>
+      {% endif %}
     {% endfor %}
   </div>
 </div>
